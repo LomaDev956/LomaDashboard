@@ -1,0 +1,200 @@
+
+# LOMA Tools - Gestión de Herramientas y Garantías
+
+LOMA Tools es una aplicación web integral diseñada para la gestión eficiente de inventarios de herramientas, personal y procesos de garantía. Construida con tecnologías modernas como Next.js y Genkit, la aplicación ofrece una solución robusta y local (usa IndexedDB) que funciona directamente en el navegador sin necesidad de una base de datos externa.
+
+![LOMA Tools Dashboard](https://placehold.co/800x450.png?text=LOMA+Tools+Dashboard)
+
+## ✨ Características Principales
+
+- **Gestión de Inventario de Herramientas:** Añade, edita y rastrea herramientas con detalles como CAT.NO., número de serie, fotos, condición (Nueva/Usada) y estado actual (Operativa, Requiere Reparación, Vendido).
+
+- **Extracción de Datos con IA (OCR):** Utiliza la cámara de tu dispositivo o sube una foto de la etiqueta de una herramienta para que la inteligencia artificial extraiga y rellene automáticamente el CAT.NO., número de serie y nombre del producto.
+
+- **Estimación de Garantía Automatizada:** La aplicación analiza el número de serie y el tipo de producto para estimar instantáneamente el estado de la garantía (Activa, Expirada, Vitalicia), basándose en políticas conocidas y reglas personalizadas.
+
+- **Creación y Seguimiento de Listas de Garantía:** Agrupa fácilmente las herramientas que requieren reparación en una lista, asígnalas a un miembro del personal y sigue el estado del envío a garantía (En Preparación, Enviada, En Proceso, etc.).
+
+- **Reportes Profesionales:** Genera e imprime reportes claros y profesionales para cada lista de garantía, incluyendo los datos del personal y los detalles de cada herramienta. También puedes exportar los datos a CSV, XLSX y PDF.
+
+- **Gestión de Personal:** Mantén un directorio centralizado de los miembros del personal y colaboradores, con su información de contacto y dirección.
+
+- **Módulo de Stock (Punto de Venta):** Visualiza todas las herramientas operativas listas para la venta. Un simple clic en "Vender" actualiza su estado y las retira del stock disponible.
+
+- **Reglas de Garantía Personalizables:** Define tus propias reglas de garantía para productos específicos por su CAT.NO. Estas reglas tienen prioridad sobre la lógica de estimación estándar de la aplicación.
+
+- **Utilidad de Captura de Imágenes:** Una interfaz dedicada para capturar y analizar imágenes, con controles avanzados de cámara y la misma capacidad de extracción de datos por IA.
+
+## 🚀 Tecnología Utilizada
+
+- **Framework:** Next.js (con App Router)
+- **Lenguaje:** TypeScript
+- **UI:** React, Tailwind CSS y componentes de ShadCN UI
+- **Inteligencia Artificial:** Google AI a través de Genkit para OCR.
+- **Almacenamiento de Datos:** IndexedDB, permitiendo que la aplicación funcione completamente en el lado del cliente sin necesidad de un backend o base de datos externa.
+
+## 🏁 Cómo Empezar
+
+Esta aplicación está diseñada para funcionar localmente en tu navegador.
+
+### Prerrequisitos
+
+- Node.js y npm (o yarn/pnpm) instalados.
+
+### Instalación y Ejecución
+
+1.  **Clonar el repositorio (si aplica):**
+    ```bash
+    git clone <url-del-repositorio>
+    cd <directorio-del-proyecto>
+    ```
+
+2.  **Instalar dependencias:**
+    ```bash
+    npm install
+    ```
+
+3.  **Configurar la API de IA (Opcional pero Recomendado):**
+    Para que las funciones de extracción de datos con IA funcionen, necesitas una clave de API de Google AI.
+    - Crea un archivo llamado `.env.local` en la raíz del proyecto.
+    - Añade tu clave de API al archivo de la siguiente manera:
+      ```
+      GOOGLE_API_KEY="TU_API_KEY_DE_GOOGLE_AI"
+      ```
+
+4.  **Iniciar el servidor de desarrollo:**
+    ```bash
+    npm run dev
+    ```
+
+5.  Abre tu navegador y navega a `http://localhost:3000`. La aplicación te redirigirá automáticamente al dashboard principal.
+
+## 📂 Guía Detallada de Módulos
+
+A continuación, se detalla el funcionamiento de cada sección de la aplicación.
+
+### **1. Gestión de Herramientas (`/loma-dashboard/herramientas`)**
+Es el corazón de la aplicación, donde se gestiona todo el inventario.
+
+#### **Formulario "Agregar/Editar Herramienta"**
+Este formulario dinámico permite registrar nuevas herramientas o modificar las existentes.
+
+- **Campos del Formulario:**
+  - `CAT.NO.`: Identificador de catálogo del producto (obligatorio).
+  - `Nombre Herramienta`: Nombre descriptivo del producto (obligatorio).
+  - `Serial Number`: Número de serie único de la herramienta. Es clave para la estimación de garantía.
+  - `Condición`: Estado físico de la herramienta (`Nueva` o `Usada`).
+  - `Estado`: Estado funcional actual de la herramienta (`Operativa`, `Requiere Reparación`, `Vendido`).
+  - `Falla`: Campo de texto que aparece solo si el `Estado` es "Requiere Reparación", para describir el problema.
+  - `Años de Garantía` / `Fecha Vencimiento`: Campos para registrar manualmente la información de garantía si se conoce.
+  - `Fotos`: Permite añadir hasta 10 imágenes por herramienta.
+
+- **Estimación de Garantía Automática:**
+  - Al ingresar un `Serial Number`, la aplicación intenta analizarlo para encontrar un patrón de fecha de fabricación (YYMMDD o YYWW) y, junto con el `CAT.NO.`, estima automáticamente el estado y la fecha de vencimiento de la garantía. El resultado se muestra debajo de los campos de garantía.
+
+- **Botones de Fotos:**
+  - `Seleccionar Fotos`: Abre el explorador de archivos para subir imágenes desde tu dispositivo.
+  - `Capturar Foto`: Abre la cámara del dispositivo para tomar una foto directamente.
+
+- **Botones de Acción del Formulario:**
+  - `Llenar con Datos de Etiqueta (OCR)`: (Ver sección detallada más abajo).
+  - `Limpiar Formulario` / `Cancelar Edición`: Borra todos los campos del formulario o cancela la edición de una herramienta existente.
+  - `Agregar Herramienta` / `Guardar Cambios`: Guarda la información en la base de datos local (IndexedDB).
+
+#### **Captura por OCR (Botón: `Llenar con Datos de Etiqueta`)**
+Esta es una de las funciones más potentes. Su objetivo es agilizar el ingreso de datos mediante el análisis de una imagen.
+
+- **Flujo de Funcionamiento:**
+  1. **Activar:** Al hacer clic en el botón, se abre una ventana modal (popup).
+  2. **Seleccionar Imagen:** Dentro del modal, tienes dos opciones:
+     - `Abrir Cámara`: Activa la cámara de tu dispositivo para tomar una foto en vivo de la etiqueta de la herramienta. Se recomienda enfocar bien y asegurar buena iluminación.
+     - `Cargar Imagen`: Permite seleccionar un archivo de imagen que ya tengas guardado.
+  3. **Procesar:** Una vez que tienes una imagen en la previsualización, haces clic en el botón `Extraer Información de Esta Imagen`.
+  4. **Análisis con IA:** La aplicación envía la imagen a un flujo de Genkit. El modelo de IA (`gemini-pro`) está instruido para buscar y "leer" texto en tres áreas específicas de la imagen, que corresponden a:
+     - **Área 1 (Serial Number):** Busca texto junto a identificadores como "SER.".
+     - **Área 2 (CAT.NO.):** Busca texto junto a "CAT.NO.".
+     - **Área 3 (Nombre del Producto):** Busca el texto más prominente que describe el artículo.
+  5. **Auto-rellenado:** Una vez que la IA devuelve el texto extraído, los campos `CAT.NO.`, `Serial Number` y `Nombre Herramienta` del formulario principal se rellenan automáticamente.
+  6. **Confirmación:** El modal se cierra y verás los campos actualizados, listos para que completes la información restante.
+
+#### **Tabla "Inventario de Herramientas"**
+Muestra todas las herramientas registradas.
+
+- `CAT.NO.`, `Nombre`, `S/N`: Información básica.
+- `Condición` y `Estado Herr.`: Muestran insignias de colores para una rápida identificación visual.
+- `Garantía (Est./Vence)`: Muestra el estado de la garantía estimado. Puedes pasar el cursor sobre él para ver más detalles.
+- `Fotos`: Indica el número de imágenes asociadas.
+- `Acciones`:
+  - `Editar` (icono de lápiz): Carga los datos de esa herramienta en el formulario de arriba para modificarlos.
+  - `Eliminar` (icono de basura): Borra permanentemente la herramienta del inventario (pide confirmación).
+
+---
+
+### **2. Gestión de Personal (`/loma-dashboard/personal`)**
+Permite administrar un directorio de empleados o colaboradores.
+
+- **Formulario de Personal:** Un formulario estándar para ingresar nombre, apellido, email, teléfono y dirección completa. Todos los campos son obligatorios.
+- **Lista de Personal (Tabla):** Muestra los datos de contacto de cada persona registrada. Los botones de `Editar` y `Eliminar` funcionan de manera similar a la sección de herramientas.
+
+---
+
+### **3. Crear Lista de Garantía (`/loma-dashboard/garantias`)**
+Esta sección se utiliza para agrupar herramientas que se enviarán a garantía.
+
+- **Seleccionar Herramientas:** Se muestra una tabla con todas las herramientas cuyo estado es "Requiere Reparación" y que no están ya en otra lista activa. Se seleccionan mediante checkboxes.
+- **Asociar con Personal:** Se elige un miembro del personal de una lista desplegable. Esta persona será la responsable o el punto de contacto para la lista.
+- **Notas Adicionales:** Un campo opcional para cualquier instrucción relevante.
+- **Botón `Crear Lista de Garantía`:**
+  - Agrupa las herramientas seleccionadas, las asocia con el personal y guarda la lista.
+  - Asigna automáticamente un nombre secuencial (ej. `GL-001`, `GL-002`).
+  - Las herramientas en esta lista ya no aparecerán como disponibles para añadir a otras listas, evitando duplicados.
+
+---
+
+### **4. Listas de Garantías (`/loma-dashboard/lista-garantias`)**
+Permite visualizar y gestionar todas las listas de garantía creadas.
+
+- **Tabla de Listas:** Muestra un resumen de cada lista, incluyendo su nombre, fecha, personal asociado, número de artículos y estado actual.
+- **Menú de Acciones (botón `...`):**
+  - `Ver Detalles`: Abre un modal con la información completa de la lista y las herramientas que contiene.
+  - `Cambiar Estado`: Permite actualizar el estado del envío (`En Preparación`, `Enviada`, `En Proceso`, etc.).
+  - `Imprimir Lista`: **Función Clave**. Genera una vista limpia y profesional de la lista, con todos los datos del personal y las herramientas, perfecta para imprimir en una hoja de papel estándar o guardar como PDF.
+  - `Exportar a CSV/XLSX/PDF`: Descarga los datos de la lista en formatos compatibles con plataformas de e-service, para facilitar el proceso de reclamación de garantía.
+  - `Eliminar Lista`: Borra la lista (pide confirmación).
+
+---
+
+### **5. Stock (`/loma-dashboard/stock`)**
+Funciona como un punto de venta (POS) simplificado.
+
+- **Vista de Stock:** Muestra únicamente las herramientas cuyo estado es "Operativa", es decir, las que están listas para la venta.
+- **Barra de Búsqueda:** Permite filtrar rápidamente por nombre, CAT.NO. o número de serie.
+- **Botón `Vender`:**
+  - Al hacer clic, se comunica con una API interna (`/api/pos/sell`).
+  - Cambia el estado de la herramienta a "Vendido".
+  - La herramienta se retira automáticamente de esta vista de stock, ya que deja de estar "Operativa".
+
+---
+
+### **6. Páginas de Utilidades**
+
+- **Administrar Reglas de Garantía (`/manage-warranty`):** Permite crear reglas de garantía personalizadas por CAT.NO. que tienen prioridad sobre la lógica estándar de la aplicación. Muy útil para productos con políticas de garantía especiales.
+- **Utilidad de Captura (`/capture`):** Una versión independiente y enfocada de la herramienta de captura de imágenes, con una galería para ver y analizar múltiples capturas y su información extraída por IA.
+
+---
+
+## 📂 Archivos a Excluir (Para Ejecución Local)
+Si vas a comprimir o mover el proyecto para usarlo en otra máquina, hay directorios y archivos que no necesitas incluir porque se generan automáticamente. Esto reducirá enormemente el tamaño del archivo.
+
+- **`/node_modules`**: Este directorio contiene todas las librerías y se crea automáticamente al ejecutar `npm install`. Es el más pesado y nunca debe incluirse.
+- **`/.next`**: Esta carpeta es la caché de compilación de Next.js. Se genera al ejecutar `npm run dev` o `npm run build`.
+- **`.env.local`**: Aunque es pequeño, este archivo contiene tus claves secretas (como la GOOGLE_API_KEY). No deberías compartirlo.
+
+## 🚀 Ejecución Rápida (Windows)
+Para simplificar el proceso en sistemas Windows, puedes usar el archivo `start-local.bat` incluido en la raíz del proyecto.
+
+1.  Haz doble clic en el archivo `start-local.bat`.
+2.  Una nueva ventana de comandos se abrirá.
+3.  Automáticamente, el script instalará todas las dependencias necesarias (equivalente a `npm install`).
+4.  Una vez finalizado, iniciará el servidor de desarrollo (equivalente a `npm run dev`).
+5.  La aplicación estará lista en `http://localhost:3000`.
