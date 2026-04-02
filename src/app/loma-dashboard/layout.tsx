@@ -5,7 +5,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
-  LayoutDashboard, Database, PanelLeft, Wrench, Users as UsersIcon, ListPlus, ShieldCheck, PackageSearch, Palette, BookOpenCheck, ShoppingCart, Image as ImageIcon, Smartphone, User, Tag as LabelIcon, Languages, ExternalLink, Activity
+  LayoutDashboard, Database, PanelLeft, Wrench, Users as UsersIcon, ListPlus, ShieldCheck, PackageSearch, Palette, BookOpenCheck, ShoppingCart, Image as ImageIcon, Smartphone, User, Tag as LabelIcon, Languages, ExternalLink
 } from 'lucide-react'; 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -44,7 +44,6 @@ const lomaNavItems: NavItem[] = [
   { href: '/loma-dashboard/stock', icon: PackageSearch, label: 'Stock (Para Venta)' },
   { href: '/loma-dashboard/vendidos', icon: ShoppingCart, label: 'Vendidos' },
   { href: '/loma-dashboard/etiquetas', icon: LabelIcon, label: 'Diseñador de Etiquetas' },
-  { href: '/loma-dashboard/server-health', icon: Activity, label: 'Salud del servidor' },
   { href: '/loma-dashboard/settings', icon: Database, label: 'Ajustes y Respaldos' },
 ];
 

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { 
@@ -42,7 +43,7 @@ export default function PortalPage() {
       description:
         'CPU, memoria, disco, PM2, procesos, log del watchdog y actualizaciones apt',
       icon: ServerCog,
-      url: '/loma-dashboard/server-health',
+      url: '/portal/server-health',
       color: 'from-teal-400 to-cyan-600',
       enabled: user.role === 'admin'
     },
@@ -142,14 +143,28 @@ export default function PortalPage() {
               <p className="text-gray-400 mt-1">Bienvenido, <span className="text-cyan-400">{user.name}</span></p>
             </div>
           </div>
-          <Button 
-            variant="outline"
-            className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300 hover:border-cyan-400/50 transition-all"
-            onClick={handleLogout}
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Cerrar Sesión
-          </Button>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {user.role === 'admin' && (
+              <Button
+                variant="outline"
+                asChild
+                className="border-teal-500/40 text-teal-300 hover:bg-teal-500/10 hover:text-teal-200"
+              >
+                <Link href="/portal/server-health">
+                  <ServerCog className="h-4 w-4 mr-2" />
+                  Salud del servidor
+                </Link>
+              </Button>
+            )}
+            <Button 
+              variant="outline"
+              className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300 hover:border-cyan-400/50 transition-all"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Cerrar Sesión
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -207,12 +222,22 @@ export default function PortalPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-1">
                 <p className="text-sm text-gray-400">Todos los servicios operando normalmente</p>
                 <p className="text-xs text-gray-500">Última actualización: {new Date().toLocaleString('es-ES')}</p>
+                {user.role === 'admin' && (
+                  <p className="pt-2">
+                    <Link
+                      href="/portal/server-health"
+                      className="text-sm font-medium text-cyan-400 hover:text-cyan-300 underline underline-offset-4 decoration-cyan-500/50 hover:decoration-cyan-400"
+                    >
+                      Ver salud del servidor: CPU, PM2, procesos, log del watchdog y paquetes apt →
+                    </Link>
+                  </p>
+                )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></div>
                 <span className="text-sm font-medium text-green-400">Online</span>
               </div>
