@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isLomaSessionAuthenticated } from '@/lib/loma-session';
-import { execFileSafe, execFileSafeEnv, isUnixLike } from '@/lib/server-health-exec';
+import { execFileSafe, isUnixLike } from '@/lib/server-health-exec';
 
 function tail(s: string, max = 12_000): string {
   const t = String(s);
@@ -84,13 +84,11 @@ export async function POST() {
       300_000
     );
 
-    const upgradeOut = await execFileSafeEnv(
+    const upgradeOut = await execFileSafe(
       'sudo',
       ['-n', 'apt-get', 'upgrade', '-y', '-qq'],
-      {
-        timeoutMs: 900_000,
-        env: { DEBIAN_FRONTEND: 'noninteractive' },
-      }
+      900_000,
+      { env: { DEBIAN_FRONTEND: 'noninteractive' } }
     );
 
     return NextResponse.json({
