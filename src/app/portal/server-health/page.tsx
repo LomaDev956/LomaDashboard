@@ -934,35 +934,35 @@ export default function PortalServerHealthPage() {
                       </div>
                     );
                   })}
-                  {rebootRequired === true && (
-                    <div className="rounded border border-zinc-800/80 bg-black/20 p-2">
-                      <p className="text-sm font-semibold text-emerald-300">
-                        Reboot recomendado
-                      </p>
-                      {rebootEnabled === true ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="mt-2 border-emerald-600/50 bg-zinc-950/50 text-emerald-200 hover:bg-zinc-900 hover:text-emerald-100 hover:border-emerald-500/70"
-                          onClick={() => {
-                            void runReboot();
-                          }}
-                          disabled={rebootApplying}
-                        >
-                          Reiniciar servidor
-                        </Button>
-                      ) : (
-                        <p className="mt-2 text-[12px] text-amber-300/90 leading-tight">
-                          {rebootHint}
-                        </p>
-                      )}
-                      {rebootLog && (
-                        <p className="mt-2 text-[11px] text-gray-300 whitespace-pre-wrap">
-                          {rebootLog}
-                        </p>
-                      )}
-                    </div>
+                </div>
+              )}
+              {rebootRequired === true && (
+                <div className="space-y-2 rounded-md border border-zinc-700/60 bg-zinc-950/40 p-3 mt-4">
+                  <p className="text-sm font-semibold text-emerald-300">
+                    Reboot recomendado
+                  </p>
+                  {rebootEnabled === true ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="border-emerald-600/50 bg-zinc-950/50 text-emerald-200 hover:bg-zinc-900 hover:text-emerald-100 hover:border-emerald-500/70"
+                      onClick={() => {
+                        void runReboot();
+                      }}
+                      disabled={rebootApplying}
+                    >
+                      Reiniciar servidor
+                    </Button>
+                  ) : (
+                    <p className="text-[12px] text-amber-300/90 leading-tight">
+                      {rebootHint}
+                    </p>
+                  )}
+                  {rebootLog && (
+                    <p className="text-[11px] text-gray-300 whitespace-pre-wrap">
+                      {rebootLog}
+                    </p>
                   )}
                 </div>
               )}
