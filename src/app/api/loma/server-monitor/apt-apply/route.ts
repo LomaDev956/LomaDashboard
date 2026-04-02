@@ -34,6 +34,13 @@ function parseIncludePhasedUpdates(): boolean {
   return v === 'true' || v === '1' || v === 'yes';
 }
 
+function parseUseFullUpgrade(): boolean {
+  const raw = process.env.LOMA_APT_APPLY_USE_FULL_UPGRADE;
+  if (raw == null || String(raw).trim() === '') return false;
+  const v = String(raw).trim().replace(/^["']|["']$/g, '').toLowerCase();
+  return v === 'true' || v === '1' || v === 'yes';
+}
+
 export async function GET() {
   if (!(await isLomaSessionAuthenticated())) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
@@ -85,6 +92,7 @@ export async function POST() {
   }
 
   const includePhased = parseIncludePhasedUpdates();
+  const useFullUpgrade = parseUseFullUpgrade();
 
   const aptEnv = { DEBIAN_FRONTEND: 'noninteractive' as const };
   const aptIo = { env: aptEnv, ignoreStdin: true };
@@ -97,7 +105,8 @@ export async function POST() {
       aptIo
     );
 
-    const upgradeArgs = ['-n', 'apt-get', 'upgrade', '-y', '-q'];
+    const upgradeCmd = useFullUpgrade ? 'full-upgrade' : 'upgrade';
+    const upgradeArgs = ['-n', 'apt-get', upgradeCmd, '-y', '-q'];
     if (includePhased) {
       upgradeArgs.push(
         '-o',

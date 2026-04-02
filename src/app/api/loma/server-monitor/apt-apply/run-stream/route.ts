@@ -25,6 +25,13 @@ function parseIncludePhasedUpdates(): boolean {
   return v === 'true' || v === '1' || v === 'yes';
 }
 
+function parseUseFullUpgrade(): boolean {
+  const raw = process.env.LOMA_APT_APPLY_USE_FULL_UPGRADE;
+  if (raw == null || String(raw).trim() === '') return false;
+  const v = String(raw).trim().replace(/^["']|["']$/g, '').toLowerCase();
+  return v === 'true' || v === '1' || v === 'yes';
+}
+
 function sseEvent(event: string | undefined, data: unknown) {
   const json = JSON.stringify(data);
   return event ? `event: ${event}\ndata: ${json}\n\n` : `data: ${json}\n\n`;
@@ -48,6 +55,7 @@ export async function GET(req: Request) {
   }
 
   const includePhased = parseIncludePhasedUpdates();
+  const useFullUpgrade = parseUseFullUpgrade();
 
   const g = globalThis as any;
   const lockKey = '__loma_apt_apply_running__';
@@ -190,7 +198,7 @@ export async function GET(req: Request) {
             [
               ...sudoBase,
               'apt-get',
-              'upgrade',
+              useFullUpgrade ? 'full-upgrade' : 'upgrade',
               '-y',
               '-q',
               ...(includePhased
