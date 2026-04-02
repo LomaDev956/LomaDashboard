@@ -83,14 +83,14 @@ export async function POST() {
   try {
     const updateOut = await execFileSafe(
       'sudo',
-      ['-n', 'apt-get', 'update', '-qq'],
+      ['-n', 'apt-get', 'update', '-q'],
       300_000,
       aptIo
     );
 
     const upgradeOut = await execFileSafe(
       'sudo',
-      ['-n', 'apt-get', 'upgrade', '-y', '-qq'],
+      ['-n', 'apt-get', 'upgrade', '-y', '-q'],
       900_000,
       aptIo
     );

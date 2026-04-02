@@ -711,13 +711,13 @@ export default function PortalServerHealthPage() {
                       {
                         step: 1,
                         title: "apt-get update",
-                        cmd: "sudo -n apt-get update -qq",
+                        cmd: "sudo -n apt-get update -q",
                         out: aptApplyResult.update,
                       },
                       {
                         step: 2,
                         title: "apt-get upgrade",
-                        cmd: "sudo -n apt-get upgrade -y -qq",
+                        cmd: "sudo -n apt-get upgrade -y -q",
                         out: aptApplyResult.upgrade,
                       },
                     ] as const
@@ -739,7 +739,7 @@ export default function PortalServerHealthPage() {
                         {!hasText ? (
                           <p className="text-[10px] text-zinc-500 italic">
                             Sin salida en consola (típico con{" "}
-                            <code className="text-zinc-400">-qq</code>).
+                            <code className="text-zinc-400">-q</code>).
                           </p>
                         ) : (
                           <div className="space-y-1 max-h-40 overflow-auto">
