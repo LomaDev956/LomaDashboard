@@ -102,6 +102,9 @@ export default function PortalServerHealthPage() {
   const [fetchErr, setFetchErr] = useState<string | null>(null);
   const [aptApplyEnabled, setAptApplyEnabled] = useState<boolean | null>(null);
   const [aptApplyHint, setAptApplyHint] = useState("");
+  const [aptEnvStatus, setAptEnvStatus] = useState<
+    "on" | "missing" | "invalid" | "not_linux" | null
+  >(null);
   const [aptDialogOpen, setAptDialogOpen] = useState(false);
   const [aptApplying, setAptApplying] = useState(false);
   const [aptApplyLog, setAptApplyLog] = useState<string | null>(null);
@@ -197,6 +200,35 @@ export default function PortalServerHealthPage() {
           truncated: uJson.truncated,
         });
       }
+
+      try {
+        const aptRes = await fetch(MONITOR.aptApply, { credentials: "include" });
+        const aj = (await aptRes.json()) as {
+          enabled?: boolean;
+          hint?: string;
+          aptEnvStatus?: string;
+        };
+        if (aptRes.status === 401) {
+          setAptApplyEnabled(false);
+          setAptApplyHint(
+            "Sin sesión para comprobar apt: recarga la página o vuelve a iniciar sesión en el portal."
+          );
+          setAptEnvStatus(null);
+        } else {
+          setAptApplyEnabled(!!aj.enabled);
+          setAptApplyHint(typeof aj.hint === "string" ? aj.hint : "");
+          const s = aj.aptEnvStatus;
+          if (s === "on" || s === "missing" || s === "invalid" || s === "not_linux") {
+            setAptEnvStatus(s);
+          } else {
+            setAptEnvStatus(null);
+          }
+        }
+      } catch {
+        setAptApplyEnabled(false);
+        setAptApplyHint("");
+        setAptEnvStatus(null);
+      }
     } catch (e) {
       setFetchErr(e instanceof Error ? e.message : "Error de red");
     } finally {
@@ -207,28 +239,6 @@ export default function PortalServerHealthPage() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(MONITOR.aptApply, { credentials: "include" });
-        const j = (await res.json()) as { enabled?: boolean; hint?: string };
-        if (!cancelled) {
-          setAptApplyEnabled(!!j.enabled);
-          setAptApplyHint(typeof j.hint === "string" ? j.hint : "");
-        }
-      } catch {
-        if (!cancelled) {
-          setAptApplyEnabled(false);
-          setAptApplyHint("");
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const runAptApply = useCallback(async () => {
     setAptApplying(true);
@@ -654,14 +664,21 @@ export default function PortalServerHealthPage() {
                               ? "Ejecutando…"
                               : "Aplicar actualizaciones"}
                         </Button>
-                        {aptApplyEnabled === false && (
-                          <p className="text-[10px] text-amber-400/90 text-right max-w-[240px] leading-tight">
-                            Botón desactivado: falta{" "}
-                            <code className="text-cyan-400/80">LOMA_APT_APPLY_ENABLED=true</code>{" "}
-                            en <code className="text-cyan-400/80">.env</code> del servidor +{" "}
-                            <code className="text-cyan-400/80">sudo</code> sin contraseña para{" "}
-                            <code className="text-cyan-400/80">apt-get</code>. Luego{" "}
-                            <code className="text-cyan-400/80">npm run build</code> y reiniciar PM2.
+                        {aptApplyEnabled === false && aptEnvStatus && (
+                          <p className="text-[10px] text-gray-500 text-right max-w-[260px] leading-tight">
+                            {aptEnvStatus === "missing" && (
+                              <>
+                                Variable no cargada en el proceso Node (revisa{" "}
+                                <code className="text-cyan-400/70">.env.local</code> y PM2).
+                              </>
+                            )}
+                            {aptEnvStatus === "invalid" && (
+                              <>
+                                Valor no válido: usa{" "}
+                                <code className="text-cyan-400/70">LOMA_APT_APPLY_ENABLED=true</code>.
+                              </>
+                            )}
+                            {aptEnvStatus === "not_linux" && "Solo aplica en servidor Linux."}
                           </p>
                         )}
                       </div>
