@@ -6,12 +6,23 @@ import {
   Activity,
   ArrowLeft,
   Cpu,
+  Download,
   HardDrive,
   MemoryStick,
   RefreshCw,
   Timer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Card,
   CardContent,
@@ -63,6 +74,7 @@ const MONITOR = {
   processes: "/api/loma/server-monitor/processes?limit=30",
   watchdog: "/api/loma/server-monitor/watchdog-log?lines=120",
   updates: "/api/loma/server-monitor/updates",
+  aptApply: "/api/loma/server-monitor/apt-apply",
 } as const;
 
 export default function PortalServerHealthPage() {
@@ -88,6 +100,11 @@ export default function PortalServerHealthPage() {
     truncated?: boolean;
   } | null>(null);
   const [fetchErr, setFetchErr] = useState<string | null>(null);
+  const [aptApplyEnabled, setAptApplyEnabled] = useState<boolean | null>(null);
+  const [aptApplyHint, setAptApplyHint] = useState("");
+  const [aptDialogOpen, setAptDialogOpen] = useState(false);
+  const [aptApplying, setAptApplying] = useState(false);
+  const [aptApplyLog, setAptApplyLog] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -189,6 +206,69 @@ export default function PortalServerHealthPage() {
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(MONITOR.aptApply, { credentials: "include" });
+        const j = (await res.json()) as { enabled?: boolean; hint?: string };
+        if (!cancelled) {
+          setAptApplyEnabled(!!j.enabled);
+          setAptApplyHint(typeof j.hint === "string" ? j.hint : "");
+        }
+      } catch {
+        if (!cancelled) {
+          setAptApplyEnabled(false);
+          setAptApplyHint("");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const runAptApply = useCallback(async () => {
+    setAptApplying(true);
+    setAptApplyLog(null);
+    try {
+      const res = await fetch(MONITOR.aptApply, {
+        method: "POST",
+        credentials: "include",
+      });
+      const j = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        hint?: string;
+        update?: { stdout: string; stderr: string };
+        upgrade?: { stdout: string; stderr: string };
+      };
+      if (!res.ok) {
+        setAptApplyLog(
+          [j.error, j.hint].filter(Boolean).join("\n\n") || `HTTP ${res.status}`
+        );
+        return;
+      }
+      setAptApplyLog(
+        JSON.stringify(
+          {
+            ok: j.ok,
+            update: j.update,
+            upgrade: j.upgrade,
+          },
+          null,
+          2
+        )
+      );
+      await load();
+    } catch (e) {
+      setAptApplyLog(e instanceof Error ? e.message : "Error de red");
+    } finally {
+      setAptApplying(false);
+      setAptDialogOpen(false);
+    }
   }, [load]);
 
   const memPct =
@@ -521,10 +601,13 @@ export default function PortalServerHealthPage() {
             <CardHeader>
               <CardTitle className="text-white">Actualizaciones apt</CardTitle>
               <CardDescription className="text-gray-400">
-                Solo consulta; no instala paquetes desde aquí.
+                Lista de paquetes actualizables. Opcionalmente puedes aplicar{" "}
+                <code className="text-cyan-400/90">update</code> +{" "}
+                <code className="text-cyan-400/90">upgrade</code> desde aquí si
+                el servidor lo permite (ver abajo).
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
               {updates?.error && (
                 <p className="text-sm text-red-400 mb-2">{updates.error}</p>
               )}
@@ -533,13 +616,62 @@ export default function PortalServerHealthPage() {
               )}
               {updates && !updates.error && !updates.skipped && (
                 <>
-                  <p className="text-sm mb-2 text-gray-200">
-                    <span className="font-semibold text-cyan-400">
-                      {updates.packageCount}
-                    </span>{" "}
-                    paquetes actualizables
-                    {updates.truncated ? " (lista truncada)" : ""}
-                  </p>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-gray-200">
+                      <span className="font-semibold text-cyan-400">
+                        {updates.packageCount}
+                      </span>{" "}
+                      paquetes actualizables
+                      {updates.truncated ? " (lista truncada)" : ""}
+                    </p>
+                    {updates.packageCount > 0 && (
+                      <div className="flex flex-col items-stretch sm:items-end gap-1 shrink-0">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className={
+                            aptApplyEnabled === true
+                              ? "border-amber-500/50 text-amber-300 hover:bg-amber-500/10"
+                              : "border-gray-600 text-gray-500 cursor-not-allowed opacity-80"
+                          }
+                          onClick={() => {
+                            if (aptApplyEnabled === true) {
+                              setAptDialogOpen(true);
+                            }
+                          }}
+                          disabled={aptApplying || aptApplyEnabled !== true}
+                          title={
+                            aptApplyEnabled !== true
+                              ? "En el servidor: LOMA_APT_APPLY_ENABLED=true y sudo NOPASSWD para /usr/bin/apt-get (usuario de PM2)."
+                              : undefined
+                          }
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          {aptApplyEnabled === null
+                            ? "Comprobando permisos…"
+                            : aptApplying
+                              ? "Ejecutando…"
+                              : "Aplicar actualizaciones"}
+                        </Button>
+                        {aptApplyEnabled === false && (
+                          <p className="text-[10px] text-amber-400/90 text-right max-w-[240px] leading-tight">
+                            Botón desactivado: falta{" "}
+                            <code className="text-cyan-400/80">LOMA_APT_APPLY_ENABLED=true</code>{" "}
+                            en <code className="text-cyan-400/80">.env</code> del servidor +{" "}
+                            <code className="text-cyan-400/80">sudo</code> sin contraseña para{" "}
+                            <code className="text-cyan-400/80">apt-get</code>. Luego{" "}
+                            <code className="text-cyan-400/80">npm run build</code> y reiniciar PM2.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {aptApplyEnabled === false && aptApplyHint && (
+                    <p className="text-xs text-amber-400/90 border border-amber-500/30 rounded-md p-2 bg-amber-500/5">
+                      {aptApplyHint}
+                    </p>
+                  )}
                   <ul className="max-h-80 overflow-auto text-sm space-y-1 text-gray-400">
                     {updates.packages.map((pkg) => (
                       <li key={pkg} className="font-mono text-xs">
@@ -549,8 +681,48 @@ export default function PortalServerHealthPage() {
                   </ul>
                 </>
               )}
+              {aptApplyLog && (
+                <pre className="max-h-48 overflow-auto rounded-md border border-cyan-500/20 bg-black/60 p-2 text-[10px] text-gray-300 whitespace-pre-wrap">
+                  {aptApplyLog}
+                </pre>
+              )}
             </CardContent>
           </Card>
+
+          <AlertDialog open={aptDialogOpen} onOpenChange={setAptDialogOpen}>
+            <AlertDialogContent className="bg-zinc-900 border-cyan-500/30 text-gray-100 sm:max-w-lg">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-white">
+                  ¿Aplicar apt update + upgrade?
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-gray-400">
+                  Se ejecutará en el servidor{" "}
+                  <code className="text-cyan-400">sudo apt-get update</code> y
+                  luego{" "}
+                  <code className="text-cyan-400">
+                    sudo apt-get upgrade -y
+                  </code>{" "}
+                  (modo no interactivo). Puede tardar varios minutos y reiniciar
+                  servicios si un paquete lo requiere.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="border-gray-600 text-gray-300">
+                  Cancelar
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    void runAptApply();
+                  }}
+                  disabled={aptApplying}
+                >
+                  {aptApplying ? "Ejecutando…" : "Sí, aplicar"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
 
         {health?.generatedAt && (
