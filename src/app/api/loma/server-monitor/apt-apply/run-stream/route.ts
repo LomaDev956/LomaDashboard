@@ -18,6 +18,13 @@ function parseAptApplyFlag(): { ok: boolean } {
   return { ok: v === 'true' || v === '1' || v === 'yes' };
 }
 
+function parseIncludePhasedUpdates(): boolean {
+  const raw = process.env.LOMA_APT_APPLY_INCLUDE_PHASED_UPDATES;
+  if (raw == null || String(raw).trim() === '') return false;
+  const v = String(raw).trim().replace(/^["']|["']$/g, '').toLowerCase();
+  return v === 'true' || v === '1' || v === 'yes';
+}
+
 function sseEvent(event: string | undefined, data: unknown) {
   const json = JSON.stringify(data);
   return event ? `event: ${event}\ndata: ${json}\n\n` : `data: ${json}\n\n`;
@@ -39,6 +46,8 @@ export async function GET(req: Request) {
       { status: 403 }
     );
   }
+
+  const includePhased = parseIncludePhasedUpdates();
 
   const g = globalThis as any;
   const lockKey = '__loma_apt_apply_running__';
@@ -184,6 +193,9 @@ export async function GET(req: Request) {
               'upgrade',
               '-y',
               '-q',
+              ...(includePhased
+                ? ['-o', 'APT::Get::Always-Include-Phased-Updates=true']
+                : []),
               ...commonDpkg,
             ]
           );

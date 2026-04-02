@@ -27,6 +27,13 @@ function aptApplyEnabled(): boolean {
   return parseAptApplyFlag().ok;
 }
 
+function parseIncludePhasedUpdates(): boolean {
+  const raw = process.env.LOMA_APT_APPLY_INCLUDE_PHASED_UPDATES;
+  if (raw == null || String(raw).trim() === '') return false;
+  const v = String(raw).trim().replace(/^["']|["']$/g, '').toLowerCase();
+  return v === 'true' || v === '1' || v === 'yes';
+}
+
 export async function GET() {
   if (!(await isLomaSessionAuthenticated())) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
@@ -77,6 +84,8 @@ export async function POST() {
     );
   }
 
+  const includePhased = parseIncludePhasedUpdates();
+
   const aptEnv = { DEBIAN_FRONTEND: 'noninteractive' as const };
   const aptIo = { env: aptEnv, ignoreStdin: true };
 
@@ -88,9 +97,17 @@ export async function POST() {
       aptIo
     );
 
+    const upgradeArgs = ['-n', 'apt-get', 'upgrade', '-y', '-q'];
+    if (includePhased) {
+      upgradeArgs.push(
+        '-o',
+        'APT::Get::Always-Include-Phased-Updates=true'
+      );
+    }
+
     const upgradeOut = await execFileSafe(
       'sudo',
-      ['-n', 'apt-get', 'upgrade', '-y', '-q'],
+      upgradeArgs,
       900_000,
       aptIo
     );
