@@ -109,6 +109,11 @@ export default function PortalServerHealthPage() {
   const [aptDialogOpen, setAptDialogOpen] = useState(false);
   const [aptApplying, setAptApplying] = useState(false);
   const [aptApplyLog, setAptApplyLog] = useState<string | null>(null);
+  const [aptApplyResult, setAptApplyResult] = useState<{
+    ok: boolean;
+    update: { stdout: string; stderr: string };
+    upgrade: { stdout: string; stderr: string };
+  } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -244,6 +249,7 @@ export default function PortalServerHealthPage() {
   const runAptApply = useCallback(async () => {
     setAptApplying(true);
     setAptApplyLog(null);
+    setAptApplyResult(null);
     try {
       const res = await fetch(MONITOR.aptApply, {
         method: "POST",
@@ -262,17 +268,12 @@ export default function PortalServerHealthPage() {
         );
         return;
       }
-      setAptApplyLog(
-        JSON.stringify(
-          {
-            ok: j.ok,
-            update: j.update,
-            upgrade: j.upgrade,
-          },
-          null,
-          2
-        )
-      );
+      const emptyIo = { stdout: "", stderr: "" };
+      setAptApplyResult({
+        ok: !!j.ok,
+        update: j.update ?? emptyIo,
+        upgrade: j.upgrade ?? emptyIo,
+      });
       await load();
     } catch (e) {
       setAptApplyLog(e instanceof Error ? e.message : "Error de red");
@@ -644,7 +645,7 @@ export default function PortalServerHealthPage() {
                           className={cn(
                             "shadow-none",
                             aptApplyEnabled === true
-                              ? "border-amber-800/45 bg-zinc-950 text-amber-200/90 hover:bg-zinc-900 hover:border-amber-700/40 hover:text-amber-100"
+                              ? "border-zinc-600/70 bg-zinc-900/40 text-zinc-300 hover:bg-zinc-800/50 hover:border-zinc-500/60 hover:text-zinc-100"
                               : "border-zinc-700 bg-zinc-950/70 text-zinc-500 cursor-not-allowed opacity-90"
                           )}
                           onClick={() => {
@@ -700,6 +701,74 @@ export default function PortalServerHealthPage() {
                   </ul>
                 </>
               )}
+              {aptApplyResult && aptApplyResult.ok && (
+                <div className="space-y-3 rounded-md border border-zinc-700/60 bg-zinc-950/40 p-3">
+                  <p className="text-xs font-medium text-zinc-400">
+                    Última ejecución: dos pasos en el servidor
+                  </p>
+                  {(
+                    [
+                      {
+                        step: 1,
+                        title: "apt-get update",
+                        cmd: "sudo -n apt-get update -qq",
+                        out: aptApplyResult.update,
+                      },
+                      {
+                        step: 2,
+                        title: "apt-get upgrade",
+                        cmd: "sudo -n apt-get upgrade -y -qq",
+                        out: aptApplyResult.upgrade,
+                      },
+                    ] as const
+                  ).map(({ step, title, cmd, out }) => {
+                    const hasText =
+                      (out.stdout && out.stdout.trim()) ||
+                      (out.stderr && out.stderr.trim());
+                    return (
+                      <div
+                        key={step}
+                        className="rounded border border-zinc-800/80 bg-black/35 p-2"
+                      >
+                        <p className="text-[11px] font-semibold text-cyan-500/90">
+                          {step}. {title}
+                        </p>
+                        <p className="text-[10px] text-zinc-500 font-mono mb-1">
+                          {cmd}
+                        </p>
+                        {!hasText ? (
+                          <p className="text-[10px] text-zinc-500 italic">
+                            Sin salida en consola (típico con{" "}
+                            <code className="text-zinc-400">-qq</code>).
+                          </p>
+                        ) : (
+                          <div className="space-y-1 max-h-40 overflow-auto">
+                            {!!out.stdout?.trim() && (
+                              <pre className="text-[10px] leading-relaxed whitespace-pre-wrap text-zinc-300">
+                                {out.stdout}
+                              </pre>
+                            )}
+                            {!!out.stderr?.trim() && (
+                              <pre
+                                className={cn(
+                                  "text-[10px] leading-relaxed whitespace-pre-wrap",
+                                  /dpkg-preconfigure: unable to re-open stdin/i.test(
+                                    out.stderr
+                                  )
+                                    ? "text-zinc-500"
+                                    : "text-amber-200/90"
+                                )}
+                              >
+                                {out.stderr}
+                              </pre>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
               {aptApplyLog && (
                 <pre
                   className={cn(
@@ -738,7 +807,7 @@ export default function PortalServerHealthPage() {
                   Cancelar
                 </AlertDialogCancel>
                 <AlertDialogAction
-                  className="!shadow-none !border !border-amber-900/50 !bg-zinc-950 !text-amber-200/90 hover:!bg-zinc-900 hover:!text-amber-100 hover:!border-amber-800/50"
+                  className="!shadow-none !border !border-zinc-600/70 !bg-zinc-800/60 !text-zinc-200 hover:!bg-zinc-700/70 hover:!text-white hover:!border-zinc-500/70"
                   onClick={(e) => {
                     e.preventDefault();
                     void runAptApply();

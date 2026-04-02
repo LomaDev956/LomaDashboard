@@ -77,18 +77,22 @@ export async function POST() {
     );
   }
 
+  const aptEnv = { DEBIAN_FRONTEND: 'noninteractive' as const };
+  const aptIo = { env: aptEnv, ignoreStdin: true };
+
   try {
     const updateOut = await execFileSafe(
       'sudo',
       ['-n', 'apt-get', 'update', '-qq'],
-      300_000
+      300_000,
+      aptIo
     );
 
     const upgradeOut = await execFileSafe(
       'sudo',
       ['-n', 'apt-get', 'upgrade', '-y', '-qq'],
       900_000,
-      { env: { DEBIAN_FRONTEND: 'noninteractive' } }
+      aptIo
     );
 
     return NextResponse.json({

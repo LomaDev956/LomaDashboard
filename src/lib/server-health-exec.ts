@@ -9,6 +9,8 @@ const DEFAULT_MAX_BUFFER = 10 * 1024 * 1024;
 export type ExecFileSafeExtra = {
   env?: Record<string, string>;
   maxBuffer?: number;
+  /** Use /dev/null for stdin (avoids dpkg-preconfigure "unable to re-open stdin" under PM2). */
+  ignoreStdin?: boolean;
 };
 
 /**
@@ -23,11 +25,15 @@ export async function execFileSafe(
 ): Promise<{ stdout: string; stderr: string }> {
   const maxBuffer = extra?.maxBuffer ?? DEFAULT_MAX_BUFFER;
   const env = extra?.env ? { ...process.env, ...extra.env } : process.env;
+  const stdio = extra?.ignoreStdin
+    ? (['ignore', 'pipe', 'pipe'] as const)
+    : undefined;
   const result = await execFileAsync(file, args, {
     timeout: timeoutMs,
     maxBuffer,
     windowsHide: true,
     env,
+    ...(stdio ? { stdio } : {}),
   });
   return {
     stdout: String(result.stdout ?? ''),
