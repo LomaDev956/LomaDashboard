@@ -13,6 +13,7 @@ import {
   Timer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -640,11 +641,12 @@ export default function PortalServerHealthPage() {
                           type="button"
                           size="sm"
                           variant="outline"
-                          className={
+                          className={cn(
+                            "shadow-none",
                             aptApplyEnabled === true
-                              ? "border-amber-500/50 text-amber-300 hover:bg-amber-500/10"
-                              : "border-gray-600 text-gray-500 cursor-not-allowed opacity-80"
-                          }
+                              ? "border-amber-800/45 bg-zinc-950 text-amber-200/90 hover:bg-zinc-900 hover:border-amber-700/40 hover:text-amber-100"
+                              : "border-zinc-700 bg-zinc-950/70 text-zinc-500 cursor-not-allowed opacity-90"
+                          )}
                           onClick={() => {
                             if (aptApplyEnabled === true) {
                               setAptDialogOpen(true);
@@ -699,7 +701,15 @@ export default function PortalServerHealthPage() {
                 </>
               )}
               {aptApplyLog && (
-                <pre className="max-h-48 overflow-auto rounded-md border border-cyan-500/20 bg-black/60 p-2 text-[10px] text-gray-300 whitespace-pre-wrap">
+                <pre
+                  className={cn(
+                    "max-h-48 overflow-auto rounded-md border p-3 text-[11px] leading-relaxed whitespace-pre-wrap",
+                    aptApplyLog.includes("password is required") ||
+                      aptApplyLog.toLowerCase().includes("sudo:")
+                      ? "border-rose-900/40 bg-rose-950/25 text-rose-100/90"
+                      : "border-cyan-500/20 bg-black/60 text-gray-300"
+                  )}
+                >
                   {aptApplyLog}
                 </pre>
               )}
@@ -728,7 +738,7 @@ export default function PortalServerHealthPage() {
                   Cancelar
                 </AlertDialogCancel>
                 <AlertDialogAction
-                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                  className="!shadow-none !border !border-amber-900/50 !bg-zinc-950 !text-amber-200/90 hover:!bg-zinc-900 hover:!text-amber-100 hover:!border-amber-800/50"
                   onClick={(e) => {
                     e.preventDefault();
                     void runAptApply();

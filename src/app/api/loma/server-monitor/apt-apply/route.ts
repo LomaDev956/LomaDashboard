@@ -39,7 +39,7 @@ export async function GET() {
   let hint = '';
   if (enabled) {
     hint =
-      'El botón ejecutará apt-get update y upgrade. El usuario de Node necesita sudo NOPASSWD para apt-get.';
+      'El botón usa sudo -n (sin TTY). En el servidor, el usuario de PM2 debe poder ejecutar sin contraseña: sudo -n apt-get update. Si pide clave, añade en sudoers (visudo) NOPASSWD para /usr/bin/apt-get.';
   } else if (!unix) {
     hint = 'Solo disponible en Linux.';
   } else if (aptEnvStatus === 'missing') {
