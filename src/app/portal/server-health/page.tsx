@@ -78,6 +78,7 @@ const MONITOR = {
   updates: "/api/loma/server-monitor/updates",
   aptApply: "/api/loma/server-monitor/apt-apply",
   aptApplyStream: "/api/loma/server-monitor/apt-apply/run-stream",
+  reboot: "/api/loma/server-monitor/reboot",
 } as const;
 
 export default function PortalServerHealthPage() {
@@ -119,6 +120,12 @@ export default function PortalServerHealthPage() {
     update: { stdout: string; stderr: string };
     upgrade: { stdout: string; stderr: string };
   } | null>(null);
+
+  const [rebootEnabled, setRebootEnabled] = useState<boolean | null>(null);
+  const [rebootRequired, setRebootRequired] = useState<boolean | null>(null);
+  const [rebootHint, setRebootHint] = useState<string>("");
+  const [rebootApplying, setRebootApplying] = useState(false);
+  const [rebootLog, setRebootLog] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -239,6 +246,28 @@ export default function PortalServerHealthPage() {
         setAptApplyEnabled(false);
         setAptApplyHint("");
         setAptEnvStatus(null);
+      }
+
+      try {
+        const rRes = await fetch(MONITOR.reboot, { credentials: "include" });
+        const rJson = (await rRes.json()) as {
+          enabled?: boolean;
+          hint?: string;
+          rebootRequired?: boolean;
+        };
+        if (rRes.ok) {
+          setRebootEnabled(!!rJson.enabled);
+          setRebootHint(typeof rJson.hint === "string" ? rJson.hint : "");
+          setRebootRequired(!!rJson.rebootRequired);
+        } else {
+          setRebootEnabled(false);
+          setRebootHint("");
+          setRebootRequired(false);
+        }
+      } catch {
+        setRebootEnabled(false);
+        setRebootHint("");
+        setRebootRequired(false);
       }
     } catch (e) {
       setFetchErr(e instanceof Error ? e.message : "Error de red");
@@ -383,6 +412,32 @@ export default function PortalServerHealthPage() {
       );
     };
   }, [load]);
+
+  const runReboot = useCallback(async () => {
+    setRebootApplying(true);
+    setRebootLog(null);
+    try {
+      const res = await fetch(MONITOR.reboot, {
+        method: "POST",
+        credentials: "include",
+      });
+      const j = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+      };
+      if (!res.ok) {
+        setRebootLog(j.error ?? `HTTP ${res.status}`);
+        return;
+      }
+      setRebootLog(
+        "Reiniciando el servidor. La conexión puede caerse unos minutos."
+      );
+    } catch (e) {
+      setRebootLog(e instanceof Error ? e.message : "Error de red");
+    } finally {
+      setRebootApplying(false);
+    }
+  }, []);
 
   const memPct =
     health && health.memory.totalBytes > 0
@@ -879,6 +934,36 @@ export default function PortalServerHealthPage() {
                       </div>
                     );
                   })}
+                  {rebootRequired === true && (
+                    <div className="rounded border border-zinc-800/80 bg-black/20 p-2">
+                      <p className="text-sm font-semibold text-emerald-300">
+                        Reboot recomendado
+                      </p>
+                      {rebootEnabled === true ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="mt-2 border-emerald-600/50 bg-zinc-950/50 text-emerald-200 hover:bg-zinc-900 hover:text-emerald-100 hover:border-emerald-500/70"
+                          onClick={() => {
+                            void runReboot();
+                          }}
+                          disabled={rebootApplying}
+                        >
+                          Reiniciar servidor
+                        </Button>
+                      ) : (
+                        <p className="mt-2 text-[12px] text-amber-300/90 leading-tight">
+                          {rebootHint}
+                        </p>
+                      )}
+                      {rebootLog && (
+                        <p className="mt-2 text-[11px] text-gray-300 whitespace-pre-wrap">
+                          {rebootLog}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
               {aptApplyLog && (
