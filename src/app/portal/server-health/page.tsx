@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Activity,
@@ -13,6 +13,7 @@ import {
   Timer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -76,6 +77,7 @@ const MONITOR = {
   watchdog: "/api/loma/server-monitor/watchdog-log?lines=120",
   updates: "/api/loma/server-monitor/updates",
   aptApply: "/api/loma/server-monitor/apt-apply",
+  aptApplyStream: "/api/loma/server-monitor/apt-apply/run-stream",
 } as const;
 
 export default function PortalServerHealthPage() {
@@ -109,6 +111,9 @@ export default function PortalServerHealthPage() {
   const [aptDialogOpen, setAptDialogOpen] = useState(false);
   const [aptApplying, setAptApplying] = useState(false);
   const [aptApplyLog, setAptApplyLog] = useState<string | null>(null);
+  const [aptRunPhase, setAptRunPhase] = useState<string | null>(null);
+  const [aptRunProgress, setAptRunProgress] = useState<number>(0);
+  const aptEventSourceRef = useRef<EventSource | null>(null);
   const [aptApplyResult, setAptApplyResult] = useState<{
     ok: boolean;
     update: { stdout: string; stderr: string };
@@ -246,41 +251,137 @@ export default function PortalServerHealthPage() {
     void load();
   }, [load]);
 
-  const runAptApply = useCallback(async () => {
-    setAptApplying(true);
-    setAptApplyLog(null);
-    setAptApplyResult(null);
-    try {
-      const res = await fetch(MONITOR.aptApply, {
-        method: "POST",
-        credentials: "include",
-      });
-      const j = (await res.json()) as {
-        ok?: boolean;
-        error?: string;
-        hint?: string;
-        update?: { stdout: string; stderr: string };
-        upgrade?: { stdout: string; stderr: string };
-      };
-      if (!res.ok) {
-        setAptApplyLog(
-          [j.error, j.hint].filter(Boolean).join("\n\n") || `HTTP ${res.status}`
-        );
-        return;
+  useEffect(() => {
+    return () => {
+      try {
+        aptEventSourceRef.current?.close();
+      } catch {
+        // ignore
       }
-      const emptyIo = { stdout: "", stderr: "" };
-      setAptApplyResult({
-        ok: !!j.ok,
-        update: j.update ?? emptyIo,
-        upgrade: j.upgrade ?? emptyIo,
+    };
+  }, []);
+
+  const runAptApply = useCallback(() => {
+    setAptApplying(true);
+    setAptApplyResult(null);
+    setAptRunPhase("Preparando...");
+    setAptRunProgress(0);
+    setAptApplyLog("Iniciando apt-get update + upgrade...\n");
+
+    // Si el usuario dispara esto varias veces, cerramos el anterior.
+    try {
+      aptEventSourceRef.current?.close();
+    } catch {
+      // ignore
+    }
+
+    let finished = false;
+
+    const appendLog = (text: string) => {
+      setAptApplyLog((prev) => {
+        const next = `${prev ?? ""}${text ?? ""}`;
+        const max = 20_000;
+        if (next.length <= max) return next;
+        return next.slice(-max);
       });
-      await load();
-    } catch (e) {
-      setAptApplyLog(e instanceof Error ? e.message : "Error de red");
-    } finally {
+    };
+
+    const es = new EventSource(MONITOR.aptApplyStream, {
+      withCredentials: true,
+    });
+    aptEventSourceRef.current = es;
+
+    es.addEventListener("phase", (evt) => {
+      try {
+        const p = JSON.parse(String(evt.data)) as {
+          phase?: string;
+          progress?: number;
+          message?: string;
+        };
+        if (finished) return;
+        const phase = p.phase ?? null;
+        setAptRunPhase(
+          phase === "done" ? "Finalizado" : p.message || (phase ?? "Ejecutando")
+        );
+        if (typeof p.progress === "number") setAptRunProgress(p.progress);
+      } catch {
+        // ignore malformed events
+      }
+    });
+
+    es.addEventListener("stdout", (evt) => {
+      if (finished) return;
+      try {
+        const p = JSON.parse(String(evt.data)) as { text?: string };
+        appendLog(p.text ?? "");
+      } catch {
+        appendLog(String(evt.data));
+      }
+    });
+
+    es.addEventListener("stderr", (evt) => {
+      if (finished) return;
+      try {
+        const p = JSON.parse(String(evt.data)) as { text?: string };
+        appendLog(p.text ?? "");
+      } catch {
+        appendLog(String(evt.data));
+      }
+    });
+
+    es.addEventListener("done", async (evt) => {
+      finished = true;
+      try {
+        es.close();
+      } catch {
+        // ignore
+      }
+      aptEventSourceRef.current = null;
+
+      try {
+        const d = JSON.parse(String(evt.data)) as {
+          ok?: boolean;
+          error?: string;
+          update?: { stdout: string; stderr: string };
+          upgrade?: { stdout: string; stderr: string };
+        };
+
+        setAptRunPhase("Finalizado");
+        setAptRunProgress(100);
+
+        if (d.ok) {
+          setAptApplyResult({
+            ok: true,
+            update: d.update ?? { stdout: "", stderr: "" },
+            upgrade: d.upgrade ?? { stdout: "", stderr: "" },
+          });
+        } else {
+          appendLog(`\n\nERROR: ${d.error ?? "apt apply falló"}`);
+        }
+      } finally {
+        setAptApplying(false);
+        setAptDialogOpen(false);
+        await load();
+      }
+    });
+
+    es.onerror = () => {
+      if (finished) return;
+      finished = true;
+      try {
+        es.close();
+      } catch {
+        // ignore
+      }
+      aptEventSourceRef.current = null;
       setAptApplying(false);
       setAptDialogOpen(false);
-    }
+      setAptRunPhase("Error");
+      setAptRunProgress(0);
+      appendLog(
+        "\n\nError de conexión al stream (posible sesión expirada o endpoint deshabilitado)."
+      );
+    };
   }, [load]);
 
   const memPct =
@@ -700,6 +801,17 @@ export default function PortalServerHealthPage() {
                     ))}
                   </ul>
                 </>
+              )}
+              {aptApplying && (
+                <div className="space-y-2 rounded-md border border-zinc-700/60 bg-zinc-950/40 p-3 mt-4">
+                  <p className="text-xs text-zinc-400">
+                    {aptRunPhase ?? "Ejecutando..."}
+                  </p>
+                  <Progress
+                    value={aptRunProgress}
+                    className="bg-zinc-800"
+                  />
+                </div>
               )}
               {aptApplyResult && aptApplyResult.ok && (
                 <div className="space-y-3 rounded-md border border-zinc-700/60 bg-zinc-950/40 p-3">
