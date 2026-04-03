@@ -424,13 +424,18 @@ export default function PortalServerHealthPage() {
       const j = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
         error?: string;
+        detail?: string;
+        hint?: string;
       };
       if (!res.ok) {
-        setRebootLog(j.error ?? `HTTP ${res.status}`);
+        setRebootLog(
+          [j.error, j.detail, j.hint].filter(Boolean).join("\n\n") ||
+            `HTTP ${res.status}`
+        );
         return;
       }
       setRebootLog(
-        "Reiniciando el servidor. La conexión puede caerse unos minutos."
+        "Comando de reinicio enviado. En 1–2 min comprueba con `uptime` o `who -b` si el uptime bajó; si sigue en días, sudo/shutdown falló."
       );
     } catch (e) {
       setRebootLog(e instanceof Error ? e.message : "Error de red");
@@ -1053,7 +1058,14 @@ export default function PortalServerHealthPage() {
                     </p>
                   )}
                   {rebootLog && (
-                    <p className="text-[11px] text-gray-300 whitespace-pre-wrap">
+                    <p
+                      className={cn(
+                        "rounded-md border p-2 text-[11px] whitespace-pre-wrap",
+                        /sudo|password|falló|No se pudo/i.test(rebootLog)
+                          ? "border-rose-900/50 bg-rose-950/20 text-rose-100/90"
+                          : "border-zinc-700/50 text-gray-300"
+                      )}
+                    >
                       {rebootLog}
                     </p>
                   )}
