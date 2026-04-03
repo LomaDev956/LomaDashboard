@@ -66,21 +66,9 @@ export async function POST() {
 
   const required = rebootRequired();
 
-  try {
-    await execFileSafe('sudo', ['-n', 'true'], 5000, { ignoreStdin: true });
-  } catch (e) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error:
-          'sudo sin contraseña no funciona para el usuario de Node/PM2 (sudo -n true falló).',
-        detail: execFailureDetail(e),
-        hint:
-          'En el servidor: sudo visudo y añade una línea NOPASSWD para ese usuario, por ejemplo: lomadev ALL=(ALL) NOPASSWD: /usr/sbin/shutdown',
-      },
-      { status: 500 }
-    );
-  }
+  // No usar `sudo -n true` como prueba: si en sudoers solo hay NOPASSWD para
+  // /usr/sbin/shutdown, `true` sigue pidiendo contraseña y el portal fallaría
+  // aunque el reinicio estuviera permitido.
 
   const shutdownBins = ['/usr/sbin/shutdown', '/sbin/shutdown'];
   let lastDetail = '';
