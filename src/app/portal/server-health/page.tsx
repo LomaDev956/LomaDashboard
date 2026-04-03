@@ -126,6 +126,10 @@ export default function PortalServerHealthPage() {
   const [rebootHint, setRebootHint] = useState<string>("");
   const [rebootApplying, setRebootApplying] = useState(false);
   const [rebootLog, setRebootLog] = useState<string | null>(null);
+  /** Evita marcar como error el texto de éxito (contiene "sudo" / "falló" como ayuda). */
+  const [rebootLogTone, setRebootLogTone] = useState<"success" | "error" | null>(
+    null
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -416,6 +420,7 @@ export default function PortalServerHealthPage() {
   const runReboot = useCallback(async () => {
     setRebootApplying(true);
     setRebootLog(null);
+    setRebootLogTone(null);
     try {
       const res = await fetch(MONITOR.reboot, {
         method: "POST",
@@ -428,16 +433,19 @@ export default function PortalServerHealthPage() {
         hint?: string;
       };
       if (!res.ok) {
+        setRebootLogTone("error");
         setRebootLog(
           [j.error, j.detail, j.hint].filter(Boolean).join("\n\n") ||
             `HTTP ${res.status}`
         );
         return;
       }
+      setRebootLogTone("success");
       setRebootLog(
-        "Comando de reinicio enviado. En 1–2 min comprueba con `uptime` o `who -b` si el uptime bajó; si sigue en días, sudo/shutdown falló."
+        "Reinicio solicitado al sistema. La conexión y el túnel Cloudflare pueden cortarse 1–2 min. Luego comprueba `uptime` o `who -b`: el tiempo activo debería ser bajo; si sigue en días, el reinicio no se aplicó."
       );
     } catch (e) {
+      setRebootLogTone("error");
       setRebootLog(e instanceof Error ? e.message : "Error de red");
     } finally {
       setRebootApplying(false);
@@ -1061,9 +1069,11 @@ export default function PortalServerHealthPage() {
                     <p
                       className={cn(
                         "rounded-md border p-2 text-[11px] whitespace-pre-wrap",
-                        /sudo|password|falló|No se pudo/i.test(rebootLog)
+                        rebootLogTone === "error"
                           ? "border-rose-900/50 bg-rose-950/20 text-rose-100/90"
-                          : "border-zinc-700/50 text-gray-300"
+                          : rebootLogTone === "success"
+                            ? "border-emerald-800/40 bg-emerald-950/20 text-emerald-100/90"
+                            : "border-zinc-700/50 text-gray-300"
                       )}
                     >
                       {rebootLog}
