@@ -459,22 +459,22 @@ export default function PortalServerHealthPage() {
         />
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto space-y-8 p-4 md:p-6">
+      <div className="relative z-10 mx-auto w-full min-w-0 max-w-7xl space-y-6 px-3 py-4 sm:space-y-8 sm:px-4 md:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-4">
+          <div className="min-w-0 space-y-3 sm:space-y-4">
             <Button
               variant="outline"
               onClick={() => router.push("/portal")}
-              className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300"
+              className="w-full touch-manipulation border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300 sm:w-auto"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Volver al Portal
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 sm:text-2xl">
                 Salud del servidor
               </h1>
-              <p className="text-sm text-gray-400 mt-1 max-w-xl">
+              <p className="mt-1 max-w-xl text-sm leading-snug text-gray-400">
                 Portal LomaDev: métricas del mismo equipo donde corre esta
                 aplicación (sesión del portal; sin token en el navegador).
               </p>
@@ -485,7 +485,7 @@ export default function PortalServerHealthPage() {
             size="sm"
             onClick={() => void load()}
             disabled={loading}
-            className="border-cyan-500/30 text-cyan-400 shrink-0"
+            className="w-full shrink-0 touch-manipulation border-cyan-500/30 text-cyan-400 sm:w-auto"
           >
             <RefreshCw
               className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`}
@@ -505,7 +505,7 @@ export default function PortalServerHealthPage() {
         )}
 
         {health && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
             <Card className="bg-black/50 border-2 border-cyan-500/20 backdrop-blur-sm">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-gray-400">
@@ -537,7 +537,7 @@ export default function PortalServerHealthPage() {
                 <p className="text-lg font-semibold text-white">
                   {formatUptime(health.host.uptimeSec)}
                 </p>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="mt-1 break-words text-xs leading-snug text-gray-400">
                   Carga: {health.loadavg.map((x) => x.toFixed(2)).join(" · ")}{" "}
                   · {health.cpus} CPUs
                 </p>
@@ -604,8 +604,10 @@ export default function PortalServerHealthPage() {
                   : health.pm2.error ?? "PM2 no disponible"}
               </CardDescription>
             </CardHeader>
-            <CardContent className="overflow-x-auto">
+            <CardContent className="p-3 sm:p-6">
               {health.pm2.processes.length > 0 ? (
+                <>
+                <div className="hidden overflow-x-auto md:block">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-cyan-500/20">
@@ -664,6 +666,51 @@ export default function PortalServerHealthPage() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
+                <div className="space-y-2 md:hidden">
+                  {health.pm2.processes.map((p: Pm2ProcSummary) => (
+                    <div
+                      key={`${p.name}-${p.pid}-m`}
+                      className="rounded-lg border border-cyan-500/20 bg-black/40 p-3 text-sm"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="min-w-0 break-all font-medium text-white">
+                          {p.name}
+                        </span>
+                        <Badge
+                          variant={
+                            p.status === "online" ? "default" : "secondary"
+                          }
+                          className={
+                            p.status === "online"
+                              ? "shrink-0 bg-emerald-600/80"
+                              : "shrink-0"
+                          }
+                        >
+                          {p.status}
+                        </Badge>
+                      </div>
+                      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-300">
+                        <div>
+                          <span className="text-gray-500">PID</span>{" "}
+                          <span className="font-mono">{p.pid}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">CPU</span> {p.cpu}%
+                        </div>
+                        <div>
+                          <span className="text-gray-500">RAM</span>{" "}
+                          {formatBytes(p.memory)}
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Reinicios</span>{" "}
+                          {p.restarts}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                </>
               ) : (
                 <p className="text-sm text-gray-400">
                   Sin datos de PM2 en esta máquina.
@@ -682,8 +729,10 @@ export default function PortalServerHealthPage() {
                 : procMeta.error ?? "Nombre corto (comm), ordenados por %CPU"}
             </CardDescription>
           </CardHeader>
-          <CardContent className="overflow-x-auto">
+          <CardContent className="p-3 sm:p-6">
             {processes.length > 0 ? (
+              <>
+              <div className="hidden overflow-x-auto md:block">
               <Table>
                 <TableHeader>
                   <TableRow className="border-cyan-500/20">
@@ -734,6 +783,47 @@ export default function PortalServerHealthPage() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
+              <div className="space-y-2 md:hidden">
+                {processes.map((p: ProcessRow) => (
+                  <div
+                    key={`${p.pid}-m`}
+                    className="rounded-lg border border-cyan-500/20 bg-black/40 p-3 text-xs"
+                  >
+                    <div className="flex items-center justify-between gap-2 text-white">
+                      <span className="min-w-0 truncate font-medium">
+                        {p.user}
+                      </span>
+                      <span className="shrink-0 font-mono text-gray-300">
+                        PID {p.pid}
+                      </span>
+                    </div>
+                    <div className="mt-2 grid grid-cols-3 gap-2 text-gray-300">
+                      <div>
+                        CPU{" "}
+                        <span className="text-cyan-300">{p.pcpu}%</span>
+                      </div>
+                      <div>
+                        MEM{" "}
+                        <span className="text-cyan-300">{p.pmem}%</span>
+                      </div>
+                      <div className="min-w-0">
+                        RSS{" "}
+                        <span className="text-cyan-300">
+                          {formatBytes(p.rssKb * 1024)}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="mt-1 text-[11px] text-gray-400">
+                      STAT {p.stat} · {p.etime}
+                    </p>
+                    <p className="mt-2 break-all font-mono text-[10px] leading-relaxed text-gray-400">
+                      {p.command}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              </>
             ) : (
               !procMeta.skipped &&
               !procMeta.error && (
@@ -743,7 +833,7 @@ export default function PortalServerHealthPage() {
           </CardContent>
         </Card>
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card className="bg-black/50 border-2 border-cyan-500/20 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="text-white">Log del miner-watchdog</CardTitle>
@@ -755,7 +845,7 @@ export default function PortalServerHealthPage() {
               {watchdogErr && !watchdogLines.length && (
                 <p className="text-sm text-amber-400 mb-2">{watchdogErr}</p>
               )}
-              <pre className="max-h-80 overflow-auto rounded-md border border-cyan-500/20 bg-black/60 p-3 text-[11px] leading-relaxed text-gray-300">
+              <pre className="max-h-72 max-w-full overflow-auto break-words whitespace-pre-wrap rounded-md border border-cyan-500/20 bg-black/60 p-2 text-[10px] leading-relaxed text-gray-300 sm:max-h-80 sm:p-3 sm:text-[11px]">
                 {watchdogLines.length
                   ? watchdogLines.join("\n")
                   : watchdogErr
@@ -775,7 +865,7 @@ export default function PortalServerHealthPage() {
                 el servidor lo permite (ver abajo).
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="min-w-0 space-y-3 p-3 sm:p-6">
               {updates?.error && (
                 <p className="text-sm text-red-400 mb-2">{updates.error}</p>
               )}
@@ -793,13 +883,13 @@ export default function PortalServerHealthPage() {
                       {updates.truncated ? " (lista truncada)" : ""}
                     </p>
                     {updates.packageCount > 0 && (
-                      <div className="flex flex-col items-stretch sm:items-end gap-1 shrink-0">
+                      <div className="flex w-full flex-col items-stretch gap-1 sm:w-auto sm:shrink-0 sm:items-end">
                         <Button
                           type="button"
                           size="sm"
                           variant="outline"
                           className={cn(
-                            "shadow-none",
+                            "w-full touch-manipulation shadow-none sm:w-auto",
                             aptApplyEnabled === true
                               ? "border-zinc-600/70 bg-zinc-900/40 text-zinc-300 hover:bg-zinc-800/50 hover:border-zinc-500/60 hover:text-zinc-100"
                               : "border-zinc-700 bg-zinc-950/70 text-zinc-500 cursor-not-allowed opacity-90"
@@ -824,7 +914,7 @@ export default function PortalServerHealthPage() {
                               : "Aplicar actualizaciones"}
                         </Button>
                         {aptApplyEnabled === false && aptEnvStatus && (
-                          <p className="text-[10px] text-gray-500 text-right max-w-[260px] leading-tight">
+                          <p className="max-w-full text-left text-[10px] leading-tight text-gray-500 sm:text-right sm:max-w-[260px]">
                             {aptEnvStatus === "missing" && (
                               <>
                                 Variable no cargada en el proceso Node (revisa{" "}
@@ -848,9 +938,12 @@ export default function PortalServerHealthPage() {
                       {aptApplyHint}
                     </p>
                   )}
-                  <ul className="max-h-80 overflow-auto text-sm space-y-1 text-gray-400">
+                  <ul className="max-h-60 min-w-0 space-y-1 overflow-auto text-sm text-gray-400 sm:max-h-80">
                     {updates.packages.map((pkg) => (
-                      <li key={pkg} className="font-mono text-xs">
+                      <li
+                        key={pkg}
+                        className="break-all font-mono text-[11px] leading-snug sm:text-xs"
+                      >
                         {pkg}
                       </li>
                     ))}
@@ -946,7 +1039,7 @@ export default function PortalServerHealthPage() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="border-emerald-600/50 bg-zinc-950/50 text-emerald-200 hover:bg-zinc-900 hover:text-emerald-100 hover:border-emerald-500/70"
+                      className="w-full touch-manipulation border-emerald-600/50 bg-zinc-950/50 text-emerald-200 hover:bg-zinc-900 hover:border-emerald-500/70 hover:text-emerald-100 sm:w-auto"
                       onClick={() => {
                         void runReboot();
                       }}
@@ -969,7 +1062,7 @@ export default function PortalServerHealthPage() {
               {aptApplyLog && (
                 <pre
                   className={cn(
-                    "max-h-48 overflow-auto rounded-md border p-3 text-[11px] leading-relaxed whitespace-pre-wrap",
+                    "max-h-48 max-w-full overflow-auto break-words rounded-md border p-2 text-[10px] leading-relaxed whitespace-pre-wrap sm:p-3 sm:text-[11px]",
                     aptApplyLog.includes("password is required") ||
                       aptApplyLog.toLowerCase().includes("sudo:")
                       ? "border-rose-900/40 bg-rose-950/25 text-rose-100/90"
@@ -983,7 +1076,7 @@ export default function PortalServerHealthPage() {
           </Card>
 
           <AlertDialog open={aptDialogOpen} onOpenChange={setAptDialogOpen}>
-            <AlertDialogContent className="bg-zinc-900 border-cyan-500/30 text-gray-100 sm:max-w-lg">
+            <AlertDialogContent className="max-h-[min(90vh,32rem)] overflow-y-auto border-cyan-500/30 bg-zinc-900 text-gray-100 sm:max-w-lg">
               <AlertDialogHeader>
                 <AlertDialogTitle className="text-white">
                   ¿Aplicar apt update + upgrade?
