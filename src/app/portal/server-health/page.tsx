@@ -1042,29 +1042,44 @@ export default function PortalServerHealthPage() {
                   })}
                 </div>
               )}
-              {rebootRequired === true && (
+              {rebootEnabled === true && (
                 <div className="space-y-2 rounded-md border border-zinc-700/60 bg-zinc-950/40 p-3 mt-4">
-                  <p className="text-sm font-semibold text-emerald-300">
-                    Reboot recomendado
+                  <p
+                    className={cn(
+                      "text-sm font-semibold",
+                      rebootRequired === true
+                        ? "text-emerald-300"
+                        : "text-zinc-300"
+                    )}
+                  >
+                    {rebootRequired === true
+                      ? "Reboot recomendado"
+                      : "Reinicio del servidor"}
                   </p>
-                  {rebootEnabled === true ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="w-full touch-manipulation border-emerald-600/50 bg-zinc-950/50 text-emerald-200 hover:bg-zinc-900 hover:border-emerald-500/70 hover:text-emerald-100 sm:w-auto"
-                      onClick={() => {
-                        void runReboot();
-                      }}
-                      disabled={rebootApplying}
-                    >
-                      Reiniciar servidor
-                    </Button>
-                  ) : (
-                    <p className="text-[12px] text-amber-300/90 leading-tight">
-                      {rebootHint}
+                  {rebootRequired === false && (
+                    <p className="text-[11px] leading-snug text-zinc-500">
+                      No hay{" "}
+                      <code className="text-zinc-400">/var/run/reboot-required</code>
+                      ; el botón sigue disponible para un reinicio manual.
                     </p>
                   )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className={cn(
+                      "w-full touch-manipulation sm:w-auto",
+                      rebootRequired === true
+                        ? "border-emerald-600/50 bg-zinc-950/50 text-emerald-200 hover:bg-zinc-900 hover:border-emerald-500/70 hover:text-emerald-100"
+                        : "border-zinc-500/50 bg-zinc-950/50 text-zinc-200 hover:bg-zinc-900 hover:border-zinc-400/60 hover:text-zinc-100"
+                    )}
+                    onClick={() => {
+                      void runReboot();
+                    }}
+                    disabled={rebootApplying}
+                  >
+                    Reiniciar servidor
+                  </Button>
                   {rebootLog && (
                     <p
                       className={cn(
@@ -1079,6 +1094,16 @@ export default function PortalServerHealthPage() {
                       {rebootLog}
                     </p>
                   )}
+                </div>
+              )}
+              {rebootEnabled === false && rebootRequired === true && (
+                <div className="space-y-2 rounded-md border border-amber-900/40 bg-amber-950/10 p-3 mt-4">
+                  <p className="text-sm font-semibold text-amber-300">
+                    Reboot recomendado
+                  </p>
+                  <p className="text-[12px] text-amber-300/90 leading-tight">
+                    {rebootHint}
+                  </p>
                 </div>
               )}
               {aptApplyLog && (
