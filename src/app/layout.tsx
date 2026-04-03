@@ -8,13 +8,13 @@ import { RealtimeProviderWrapper } from '@/components/realtime-provider-wrapper'
 export const metadata: Metadata = {
   title: 'LomaTools App',
   description: 'Management and tools application.',
-  themeColor: '#06b6d4',
   manifest: '/manifest.json',
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  themeColor: '#06b6d4',
 };
 
 export default function RootLayout({
