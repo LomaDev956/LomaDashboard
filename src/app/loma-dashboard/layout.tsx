@@ -5,7 +5,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
-  LayoutDashboard, Database, PanelLeft, Wrench, Users as UsersIcon, ListPlus, ShieldCheck, PackageSearch, Palette, BookOpenCheck, ShoppingCart, Image as ImageIcon, Smartphone, User, Tag as LabelIcon, Languages, ExternalLink
+  LayoutDashboard, Database, PanelLeft, Wrench, Users as UsersIcon, ListPlus, ShieldCheck, PackageSearch, Palette, BookOpenCheck, ShoppingCart, Image as ImageIcon, Smartphone, User, Tag as LabelIcon, Languages, ExternalLink, LogOut
 } from 'lucide-react'; 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -167,6 +167,14 @@ function DashboardHeader() {
         setIsMobileMenuOpen(false);
     }, [pathname]);
 
+    const handleLogout = async () => {
+      try {
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      } finally {
+        router.push('/');
+        router.refresh();
+      }
+    };
 
     return (
     <>
@@ -270,6 +278,16 @@ function DashboardHeader() {
                            </DropdownMenuSubContent>
                         </DropdownMenuPortal>
                      </DropdownMenuSub>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onSelect={() => {
+                        void handleLogout();
+                      }}
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Cerrar sesión</span>
+                    </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
           </div>

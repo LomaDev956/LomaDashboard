@@ -23,8 +23,12 @@ export default function PortalPage() {
   const [user] = useState({ name: 'Admin', role: 'admin' })
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' })
-    router.push('/')
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+    } finally {
+      router.push('/')
+      router.refresh()
+    }
   }
 
   const apps = [
