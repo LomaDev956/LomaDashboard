@@ -10,6 +10,7 @@ export async function POST(request: NextRequest) {
       secure: isHttps,
       sameSite: 'lax',
       maxAge: 0,
+      expires: new Date(0),
       path: '/',
     })
     return res

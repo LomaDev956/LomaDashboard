@@ -25,10 +25,10 @@ export default function PortalPage() {
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
-    } finally {
-      router.push('/')
-      router.refresh()
+    } catch {
+      /* seguimos con recarga completa */
     }
+    window.location.assign('/')
   }
 
   const apps = [

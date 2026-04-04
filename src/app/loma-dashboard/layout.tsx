@@ -170,10 +170,11 @@ function DashboardHeader() {
     const handleLogout = async () => {
       try {
         await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-      } finally {
-        router.push('/');
-        router.refresh();
+      } catch {
+        /* igual salimos: recarga completa aplica Set-Cookie del servidor */
       }
+      // Evita que el cliente siga en el layout del dashboard; fuerza nueva petición sin sesión
+      window.location.assign('/');
     };
 
     return (
