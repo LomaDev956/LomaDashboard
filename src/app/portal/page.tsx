@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { signOut } from '@/actions/auth'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -20,15 +21,13 @@ import {
 
 export default function PortalPage() {
   const router = useRouter()
+  const [isPendingSignOut, startSignOutTransition] = useTransition()
   const [user] = useState({ name: 'Admin', role: 'admin' })
 
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
-    } catch {
-      /* seguimos con recarga completa */
-    }
-    window.location.assign('/')
+  const handleLogout = () => {
+    startSignOutTransition(() => {
+      void signOut()
+    })
   }
 
   const apps = [
@@ -162,11 +161,12 @@ export default function PortalPage() {
             )}
             <Button 
               variant="outline"
+              disabled={isPendingSignOut}
               className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300 hover:border-cyan-400/50 transition-all"
               onClick={handleLogout}
             >
               <LogOut className="h-4 w-4 mr-2" />
-              Cerrar Sesión
+              {isPendingSignOut ? 'Cerrando…' : 'Cerrar Sesión'}
             </Button>
           </div>
         </div>

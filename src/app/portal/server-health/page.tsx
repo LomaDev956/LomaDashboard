@@ -1053,14 +1053,16 @@ export default function PortalServerHealthPage() {
                     )}
                   >
                     {rebootRequired === true
-                      ? "Reboot recomendado"
-                      : "Reinicio del servidor"}
+                      ? "Reboot recomendado por el sistema"
+                      : "Reinicio manual (opcional)"}
                   </p>
                   {rebootRequired === false && (
                     <p className="text-[11px] leading-snug text-zinc-500">
-                      No hay{" "}
+                      El sistema <span className="text-zinc-400">no</span> marca reinicio
+                      pendiente (no existe{" "}
                       <code className="text-zinc-400">/var/run/reboot-required</code>
-                      ; el botón sigue disponible para un reinicio manual.
+                      ). El botón de abajo es solo por si quieres reiniciar tú a mano; no
+                      hace falta usarlo.
                     </p>
                   )}
                   <Button
