@@ -1,0 +1,204 @@
+// Esquema de base de datos para LomaDev
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Usuarios del sistema
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  name      String
+  email     String   @unique
+  role      String   // admin, employee, client
+  status    String   @default("active") // active, inactive
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  files     File[]
+  tools     Tool[]
+  products  Product[]
+}
+
+// Archivos compartidos
+model File {
+  id         String   @id @default(uuid())
+  name       String
+  originalName String
+  path       String
+  size       Int
+  mimeType   String
+  uploadedBy String
+  user       User     @relation(fields: [uploadedBy], references: [id])
+  createdAt  DateTime @default(now())
+  
+  @@index([uploadedBy])
+}
+
+// Herramientas (LOMA Tools)
+model Tool {
+  id          String   @id @default(uuid())
+  name        String
+  brand       String?
+  model       String?
+  serialNumber String? @unique
+  category    String?
+  status      String   @default("available") // available, sold, warranty, repair
+  price       Float?
+  cost        Float?
+  imageUrl    String?
+  notes       String?
+  createdBy   String
+  user        User     @relation(fields: [createdBy], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  warranties  Warranty[]
+  
+  @@index([serialNumber])
+  @@index([status])
+  @@index([createdBy])
+}
+
+// Garantías
+model Warranty {
+  id              String   @id @default(uuid())
+  toolId          String
+  tool            Tool     @relation(fields: [toolId], references: [id])
+  customerName    String
+  customerEmail   String?
+  customerPhone   String?
+  purchaseDate    DateTime
+  warrantyExpiry  DateTime
+  status          String   @default("active") // active, expired, claimed
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([toolId])
+  @@index([status])
+}
+
+// Productos para POS
+model Product {
+  id          String   @id @default(uuid())
+  sku         String   @unique
+  name        String
+  description String?
+  category    String?
+  price       Float
+  cost        Float?
+  stock       Int      @default(0)
+  minStock    Int      @default(0)
+  imageUrl    String?
+  barcode     String?
+  active      Boolean  @default(true)
+  createdBy   String
+  user        User     @relation(fields: [createdBy], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  sales       Sale[]
+  
+  @@index([sku])
+  @@index([barcode])
+  @@index([active])
+}
+
+// Ventas POS
+model Sale {
+  id          String   @id @default(uuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  quantity    Int
+  unitPrice   Float
+  total       Float
+  customerName String?
+  paymentMethod String // cash, card, transfer
+  createdAt   DateTime @default(now())
+  
+  @@index([productId])
+  @@index([createdAt])
+}
+
+// Configuración del sistema
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+// --- LOMA Dashboard: datos sincronizados en servidor ---
+
+// Herramientas LOMA (catNo, fotos, estado Operativa/Vendido, etc.)
+model LomaHerramienta {
+  id                      String   @id // e.g. H-20250126-ABC12
+  catNo                   String
+  toolName                String
+  serialNumber            String?
+  precio                  Float?
+  falla                   String?
+  anosGarantia            Int?
+  fechaVencimientoGarantia String?
+  fotos                   String   @default("[]") // JSON array HerramientaFoto[]
+  estado                  String   @default("Operativa") // Operativa | Requiere Reparación | Vendido
+  condicion               String   @default("Nueva") // Nueva | Usada | Usada (Reparada)
+  fechaAgregado           String
+  fechaVenta              String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([catNo])
+  @@index([estado])
+  @@index([serialNumber])
+  @@index([fechaAgregado])
+}
+
+// Listas de garantía (GL-001, artículos, personalId, tracking, etc.)
+model LomaListaGarantia {
+  id            String   @id // e.g. LG-xxx
+  nombreLista   String   @unique // e.g. GL-001
+  articulos     String   @default("[]") // JSON ArticuloGarantia[]
+  personalId    String?
+  fechaCreacion String
+  fechaEnvio    String?
+  estado        String   @default("En Preparación")
+  notas         String?
+  trackingIda   String?
+  trackingVenida String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([estado])
+  @@index([personalId])
+  @@index([fechaCreacion])
+}
+
+// Personal LOMA (nombre, email, Milwaukee credentials, etc.)
+model LomaPersonal {
+  id               String   @id // e.g. P-xxx
+  nombre           String
+  apellido         String
+  email            String   @unique
+  passwordHash     String?  // opcional, no guardar password en claro
+  direccion        String
+  ciudad           String
+  estado           String
+  codigoPostal     String
+  telefono         String
+  status           String   @default("Activo") // Activo | Inactivo
+  milwaukeeUser    String?
+  milwaukeePassword String? // considerar cifrar en producción
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([email])
+  @@index([status])
+}

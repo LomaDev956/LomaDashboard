@@ -22,6 +22,12 @@
 .env*.local
 .env
 
+# Prisma / SQLite (no subir bases de datos locales)
+prisma/prisma/
+prisma/*.db
+prisma/*.db-journal
+**/*.db-journal
+
 # Misc
 .DS_Store
 *.pem
