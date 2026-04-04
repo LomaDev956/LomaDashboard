@@ -1,14 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -24,17 +22,16 @@ export default function LoginPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
+        credentials: 'include',
       })
 
       const data = await response.json()
 
       if (response.ok) {
-        // Redirigir usando el parámetro ?from= de la URL (evita useSearchParams y errores de hidratación)
         const from =
           (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('from')) ||
           '/portal'
-        router.push(from)
-        router.refresh()
+        window.location.assign(from)
       } else {
         setError(data.error || 'Usuario o contraseña incorrectos')
       }
