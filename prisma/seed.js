@@ -2,7 +2,7 @@
  * Seed de base de datos.
  * Ejecutar desde la raíz del proyecto: node prisma/seed.js
  * (o npx prisma db seed si package.json tiene "prisma.seed").
- * Usa la misma DATABASE_URL que la app (ej. .env con DATABASE_URL="file:./prisma/lomadev.db").
+ * DATABASE_URL en .env: "file:./lomadev.db" (ruta relativa a la carpeta prisma/, NO ./prisma/lomadev.db).
  */
 const { PrismaClient } = require('@prisma/client')
 const bcrypt = require('bcryptjs')
