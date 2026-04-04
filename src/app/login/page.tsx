@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
+import { safeInternalPath } from '@/lib/safe-redirect-path'
 
 export default function LoginPage() {
   const [username, setUsername] = useState('')
@@ -25,13 +26,18 @@ export default function LoginPage() {
         credentials: 'include',
       })
 
-      const data = await response.json()
+      let data: { error?: string; success?: boolean } = {}
+      try {
+        data = await response.json()
+      } catch {
+        setError(`Respuesta inválida del servidor (${response.status}).`)
+        return
+      }
 
       if (response.ok) {
-        const from =
-          (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('from')) ||
-          '/portal'
-        window.location.assign(from)
+        const raw =
+          typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('from')
+        window.location.assign(safeInternalPath(raw, '/portal'))
       } else {
         setError(data.error || 'Usuario o contraseña incorrectos')
       }
