@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, useTransition, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
@@ -22,6 +22,7 @@ import {
   DropdownMenuSubContent
 } from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
+import { signOut } from '@/actions/auth';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { LanguageToggle } from '@/components/language-toggle';
 import { ShowQrCodeModal } from '@/components/loma-dashboard/ShowQrCodeModal';
@@ -137,6 +138,7 @@ function DashboardSidebar() {
 function DashboardHeader() {
     const pathname = usePathname();
     const router = useRouter();
+    const [isPendingSignOut, startSignOutTransition] = useTransition();
     const [isQrModalOpen, setIsQrModalOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     
@@ -167,14 +169,10 @@ function DashboardHeader() {
         setIsMobileMenuOpen(false);
     }, [pathname]);
 
-    const handleLogout = async () => {
-      try {
-        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-      } catch {
-        /* igual salimos: recarga completa aplica Set-Cookie del servidor */
-      }
-      // Evita que el cliente siga en el layout del dashboard; fuerza nueva petición sin sesión
-      window.location.assign('/');
+    const handleLogout = () => {
+      startSignOutTransition(() => {
+        void signOut();
+      });
     };
 
     return (
@@ -282,12 +280,13 @@ function DashboardHeader() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"
+                      disabled={isPendingSignOut}
                       onSelect={() => {
-                        void handleLogout();
+                        handleLogout();
                       }}
                     >
                       <LogOut className="mr-2 h-4 w-4" />
-                      <span>Cerrar sesión</span>
+                      <span>{isPendingSignOut ? 'Cerrando…' : 'Cerrar sesión'}</span>
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
