@@ -118,9 +118,25 @@ export async function applySerialLearning(
 
   // Aplicar la corrección específica del serial
   const fechaOriginal = new Date(fechaCalculadaOriginal);
+  if (Number.isNaN(fechaOriginal.getTime())) {
+    return {
+      fechaMejorada: fechaCalculadaOriginal,
+      confianza: serialLearning.confianza,
+      razon: 'Fecha base inválida; no se aplicó corrección de serial',
+      aprendizajeAplicado: false,
+    };
+  }
   const fechaMejorada = new Date(fechaOriginal);
   fechaMejorada.setDate(fechaMejorada.getDate() + serialLearning.diferenciaDias);
-  
+  if (Number.isNaN(fechaMejorada.getTime())) {
+    return {
+      fechaMejorada: fechaCalculadaOriginal,
+      confianza: serialLearning.confianza,
+      razon: 'Corrección produjo fecha inválida',
+      aprendizajeAplicado: false,
+    };
+  }
+
   return {
     fechaMejorada: fechaMejorada.toISOString().split('T')[0],
     confianza: serialLearning.confianza,
