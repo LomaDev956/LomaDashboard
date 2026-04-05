@@ -6,13 +6,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { Code2 } from 'lucide-react'
+import { Code2, Eye, EyeOff } from 'lucide-react'
 import { safeInternalPath } from '@/lib/safe-redirect-path'
 
 function LoginForm() {
   const searchParams = useSearchParams()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -89,16 +90,34 @@ function LoginForm() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password" className="text-gray-300">Contraseña</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-                className="bg-black/50 border-cyan-500/30 text-white placeholder:text-gray-500 focus:border-cyan-400"
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  autoComplete="current-password"
+                  className="bg-black/50 border-cyan-500/30 pe-10 text-white placeholder:text-gray-500 focus:border-cyan-400"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full min-w-10 rounded-l-none text-gray-400 hover:bg-white/5 hover:text-cyan-400"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  disabled={loading}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4 shrink-0" aria-hidden />
+                  ) : (
+                    <Eye className="h-4 w-4 shrink-0" aria-hidden />
+                  )}
+                </Button>
+              </div>
             </div>
             {error && (
               <div className="text-sm text-red-400 text-center bg-red-500/10 border border-red-500/30 rounded-lg p-3">
