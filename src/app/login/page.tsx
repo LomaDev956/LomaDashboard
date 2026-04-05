@@ -84,14 +84,12 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={loading}
-                  className="pe-10"
+                  className="pe-11"
                   autoComplete="current-password"
                 />
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full min-w-10 rounded-l-none text-muted-foreground hover:text-foreground"
+                  className="absolute right-1 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md border border-input bg-background text-slate-600 shadow-sm hover:bg-muted hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:border-cyan-500/20 dark:bg-black/40 dark:text-cyan-300/90 dark:hover:bg-white/10 dark:hover:text-cyan-200"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   disabled={loading}
@@ -101,7 +99,7 @@ export default function LoginPage() {
                   ) : (
                     <Eye className="h-4 w-4 shrink-0" aria-hidden />
                   )}
-                </Button>
+                </button>
               </div>
             </div>
             {error && (

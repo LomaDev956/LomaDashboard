@@ -100,13 +100,11 @@ function LoginForm() {
                   required
                   disabled={loading}
                   autoComplete="current-password"
-                  className="bg-black/50 border-cyan-500/30 pe-10 text-white placeholder:text-gray-500 focus:border-cyan-400"
+                  className="bg-black/50 border-cyan-500/30 pe-11 text-white placeholder:text-gray-500 focus:border-cyan-400"
                 />
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full min-w-10 rounded-l-none text-gray-400 hover:bg-white/5 hover:text-cyan-400"
+                  className="absolute right-1 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md border border-cyan-500/40 bg-black/60 text-cyan-300 hover:bg-cyan-500/10 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:pointer-events-none disabled:opacity-50"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   disabled={loading}
@@ -116,7 +114,7 @@ function LoginForm() {
                   ) : (
                     <Eye className="h-4 w-4 shrink-0" aria-hidden />
                   )}
-                </Button>
+                </button>
               </div>
             </div>
             {error && (
