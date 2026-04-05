@@ -114,9 +114,9 @@ export default function SettingsPage() {
   const [isBrave, setIsBrave] = useState(false);
   const [popupBlockedError, setPopupBlockedError] = useState(false);
   const [origin, setOrigin] = useState<string>('');
+  /** undefined = aún cargando desde /api; null = no configurado; string = listo */
+  const [oauthClientId, setOauthClientId] = useState<string | null | undefined>(undefined);
 
-
-  const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   const SCOPES = 'https://www.googleapis.com/auth/drive.file';
   
   useEffect(() => {
@@ -139,14 +139,16 @@ export default function SettingsPage() {
       setDriveError("La librería de Google no se cargó. Intenta recargar la página.");
       return;
     }
-    if (!GOOGLE_CLIENT_ID) {
-      setDriveError("El Client ID de Google no está configurado en .env.local.");
+    if (!oauthClientId) {
+      setDriveError(
+        "No hay Client ID de OAuth. En el servidor define GOOGLE_OAUTH_WEB_CLIENT_ID o NEXT_PUBLIC_GOOGLE_CLIENT_ID en .env (y reinicia PM2). Si usas solo NEXT_PUBLIC_*, ejecuta también npm run build."
+      );
       return;
     }
 
     try {
       const client = window.google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
+        client_id: oauthClientId,
         scope: SCOPES,
         callback: (tokenResponse: any) => {
           if (tokenResponse && tokenResponse.access_token) {
@@ -184,7 +186,23 @@ export default function SettingsPage() {
     } catch (e: any) {
       setDriveError(`Error inicializando autenticación de Google: ${e.message}`);
     }
-  }, [GOOGLE_CLIENT_ID, SCOPES]);
+  }, [oauthClientId, SCOPES]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/config/google-oauth-client', { credentials: 'include' });
+        const data = (await res.json()) as { clientId?: string | null };
+        if (!cancelled) setOauthClientId(data.clientId?.trim() || null);
+      } catch {
+        if (!cancelled) setOauthClientId(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     // Check for a stored token on every mount
@@ -192,17 +210,27 @@ export default function SettingsPage() {
     if (storedToken) {
       setAccessToken(storedToken);
     }
-    
-    const gisScriptId = 'gis-script';
-    // If script is already there, just initialize the client
-    if (document.getElementById(gisScriptId)) {
-      if (window.google) {
-        initGoogleAuth();
-      }
+  }, []);
+
+  useEffect(() => {
+    if (oauthClientId === undefined) return;
+
+    if (!oauthClientId) {
+      setDriveError(
+        "No hay Client ID de Google OAuth en el servidor. Añade GOOGLE_OAUTH_WEB_CLIENT_ID=tu-id.apps.googleusercontent.com en ~/loma-app/.env y ejecuta: pm2 restart loma-app --update-env (sin rebuild). O usa NEXT_PUBLIC_GOOGLE_CLIENT_ID y luego npm run build."
+      );
+      setIsGisLoaded(false);
+      setTokenClient(null);
       return;
     }
 
-    // Otherwise, load the script
+    setDriveError(null);
+    const gisScriptId = 'gis-script';
+    if (document.getElementById(gisScriptId)) {
+      if (window.google) initGoogleAuth();
+      return;
+    }
+
     const gisScript = document.createElement('script');
     gisScript.id = gisScriptId;
     gisScript.src = 'https://accounts.google.com/gsi/client';
@@ -211,8 +239,7 @@ export default function SettingsPage() {
     gisScript.onload = () => initGoogleAuth();
     gisScript.onerror = () => setDriveError("Fallo al cargar el script de Google. Revisa tu conexión.");
     document.body.appendChild(gisScript);
-    
-  }, [initGoogleAuth]);
+  }, [oauthClientId, initGoogleAuth]);
 
   const handleSignIn = useCallback(() => {
     setDriveError(null);
@@ -700,11 +727,27 @@ export default function SettingsPage() {
               </Alert>
           )}
 
-          {!isGisLoaded && !driveError && ( <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin"/> Cargando API de Google...</div> )}
-          
+          {driveError && !popupBlockedError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Error de conexión / configuración</AlertTitle>
+              <AlertDescription>{driveError}</AlertDescription>
+            </Alert>
+          )}
+
+          {oauthClientId === undefined && !driveError && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Leyendo configuración de Google…
+            </div>
+          )}
+          {oauthClientId !== undefined && !isGisLoaded && !driveError && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Cargando API de Google…
+            </div>
+          )}
+
           {isGisLoaded && !popupBlockedError && (
             <>
-              {driveError && ( <Alert variant="destructive" className="mb-4"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error de Conexión</AlertTitle><AlertDescription>{driveError}</AlertDescription></Alert> )}
               {accessToken ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-3 rounded-md bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700/50">
