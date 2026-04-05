@@ -429,6 +429,9 @@ export const estimateWarrantyFromSerialNumber = (
             continue; 
         }
 
+        const week = parseInt(weekStr, 10);
+        if (Number.isNaN(week)) continue;
+
         if (year >= 1970 && year <= (new Date().getFullYear() + 5) && week >= 1 && week <= 53) {
             try {
                 const firstDayOfYear = new Date(year, 0, 1); 
