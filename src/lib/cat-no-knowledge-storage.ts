@@ -79,3 +79,6 @@ export async function getToolNameByCatNo(catNo: string): Promise<string | null> 
         return null;
     }
 }
+
+/** Nombre antiguo en algunos imports; equivale a {@link getToolNameByCatNo}. */
+export { getToolNameByCatNo as getToolNameForCatNo }
