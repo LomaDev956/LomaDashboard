@@ -8,6 +8,29 @@ export interface CatNoKnowledge {
     lastUpdated: string; // ISO Date
 }
 
+export async function getAllCatNoKnowledge(): Promise<CatNoKnowledge[]> {
+  if (typeof window === 'undefined') return [];
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(KNOWLEDGE_STORE_NAME, 'readonly');
+      const store = transaction.objectStore(KNOWLEDGE_STORE_NAME);
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        resolve(request.result as CatNoKnowledge[]);
+      };
+      request.onerror = (event) => {
+        console.error("Error fetching all CatNoKnowledge:", (event.target as IDBRequest).error);
+        reject((event.target as IDBRequest).error);
+      };
+    });
+  } catch (error) {
+    console.error("Could not open DB for getAllCatNoKnowledge:", error);
+    return [];
+  }
+}
+
 export async function saveCatNoKnowledge(catNo: string, toolName: string): Promise<boolean> {
     if (!catNo || !toolName || typeof window === 'undefined') return false;
 
@@ -35,7 +58,7 @@ export async function saveCatNoKnowledge(catNo: string, toolName: string): Promi
     }
 }
 
-export async function getToolNameForCatNo(catNo: string): Promise<string | null> {
+export async function getToolNameByCatNo(catNo: string): Promise<string | null> {
     if (!catNo || typeof window === 'undefined') return null;
 
     try {
