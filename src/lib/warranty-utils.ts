@@ -137,7 +137,9 @@ export const determineWarrantyPeriod = (
 
   // 0. Check for custom user-defined rules first
   if (catNo && customRules) { // Check if customRules is provided
-    const customRule = customRules.find(rule => rule.catNo.trim().toLowerCase() === catNo.trim().toLowerCase());
+    const customRule = customRules.find(
+      rule => (rule.catNo ?? '').trim().toLowerCase() === catNo.trim().toLowerCase()
+    );
     if (customRule) {
       return {
         years: customRule.years,

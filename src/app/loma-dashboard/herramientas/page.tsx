@@ -485,15 +485,17 @@ export default function HerramientasPage() {
   };
 
   const getWarrantyDetailsForTable = (herramienta: Herramienta) => {
+    const toolName = herramienta.toolName ?? '';
+    const catNo = herramienta.catNo ?? '';
     const warrantyInfo = estimateWarrantyFromSerialNumber(
       herramienta.serialNumber,
-      herramienta.toolName,
-      herramienta.catNo,
+      toolName,
+      catNo,
       customWarrantyRules
     );
     const periodDetails = determineWarrantyPeriod(
-      herramienta.toolName,
-      herramienta.catNo,
+      toolName,
+      catNo,
       customWarrantyRules
     );
 
@@ -528,9 +530,17 @@ export default function HerramientasPage() {
         tiempoRestanteText = "Sin garantía";
     }
 
+    const expParsed = warrantyInfo.expirationDate
+      ? parseISO(warrantyInfo.expirationDate)
+      : null;
+    const expirationLabel =
+      expParsed && isValid(expParsed)
+        ? format(expParsed, "P", { locale: es })
+        : 'N/A';
+
     return {
       status: warrantyInfo.status,
-      expirationDate: warrantyInfo.expirationDate ? format(parseISO(warrantyInfo.expirationDate), "P", { locale: es }) : 'N/A',
+      expirationDate: expirationLabel,
       duration: warrantyDurationText,
       remaining: tiempoRestanteText,
       bgColor: getWarrantyStatusBgColor(warrantyInfo.status)
@@ -838,8 +848,8 @@ export default function HerramientasPage() {
                     const isSold = h.estado === 'Vendido';
                     return (
                       <TableRow key={h.id} className={cn(isSold && "bg-muted/40 text-muted-foreground")}>
-                        <TableCell className="font-medium whitespace-nowrap">{h.catNo}</TableCell>
-                        <TableCell className="font-medium max-w-[200px] truncate" title={h.toolName}>{h.toolName}</TableCell>
+                        <TableCell className="font-medium whitespace-nowrap">{h.catNo ?? ''}</TableCell>
+                        <TableCell className="font-medium max-w-[200px] truncate" title={h.toolName}>{h.toolName ?? ''}</TableCell>
                         <TableCell className="whitespace-nowrap max-w-[150px] truncate" title={h.serialNumber || ''}>{h.serialNumber || '-'}</TableCell>
                         <TableCell>
                            <span className={cn("px-2 py-0.5 text-xs font-semibold rounded-full whitespace-nowrap",
