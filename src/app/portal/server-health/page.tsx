@@ -34,6 +34,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Table,
   TableBody,
@@ -299,12 +300,18 @@ export default function PortalServerHealthPage() {
         } else {
           setKillEnabled(false);
           setKillAllowSigkill(false);
-          setKillHint("");
+          setKillHint(
+            kRes.status === 404
+              ? "Esta versión en el servidor no incluye matar procesos. En ~/loma-app: git pull, npm run build, pm2 restart loma-app --update-env."
+              : `No se pudo cargar la opción «Matar proceso» (HTTP ${kRes.status}).`
+          );
         }
       } catch {
         setKillEnabled(false);
         setKillAllowSigkill(false);
-        setKillHint("");
+        setKillHint(
+          "Error de red al consultar /api/loma/server-monitor/kill-process."
+        );
       }
     } catch (e) {
       setFetchErr(e instanceof Error ? e.message : "Error de red");
@@ -828,6 +835,29 @@ export default function PortalServerHealthPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-3 sm:p-6">
+            {!loading && killEnabled === false && killHint ? (
+              <Alert className="mb-4 border-amber-600/50 bg-amber-950/25 text-amber-100">
+                <AlertTitle className="text-amber-200">
+                  ¿Dónde está «Matar proceso»?
+                </AlertTitle>
+                <AlertDescription className="text-[13px] leading-relaxed text-amber-100/90 space-y-2">
+                  <p>
+                    Esa columna y el botón{" "}
+                    <span className="font-medium text-amber-50">Matar</span> solo
+                    aparecen cuando en el servidor está{" "}
+                    <code className="rounded bg-black/30 px-1 py-0.5 text-cyan-200">
+                      LOMA_KILL_PROCESS_ENABLED=true
+                    </code>{" "}
+                    y PM2 se reinicia con{" "}
+                    <code className="rounded bg-black/30 px-1 py-0.5">
+                      pm2 restart loma-app --update-env
+                    </code>
+                    .
+                  </p>
+                  <p className="text-[12px] opacity-95">{killHint}</p>
+                </AlertDescription>
+              </Alert>
+            ) : null}
             {processes.length > 0 ? (
               <>
               <div className="hidden overflow-x-auto md:block">
