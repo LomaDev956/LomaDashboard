@@ -1017,14 +1017,11 @@ export default function PortalServerHealthPage() {
               </p>
             </CardHeader>
             <CardContent>
-              {watchdogErr && !watchdogLines.length && (
-                <p className="text-sm text-amber-400 mb-2">{watchdogErr}</p>
-              )}
               <pre className="max-h-72 max-w-full overflow-auto break-words whitespace-pre-wrap rounded-md border border-cyan-500/20 bg-black/60 p-2 text-[10px] leading-relaxed text-gray-300 sm:max-h-80 sm:p-3 sm:text-[11px]">
-                {watchdogLines.length
+                {watchdogLines.length > 0
                   ? watchdogLines.join("\n")
                   : watchdogErr
-                    ? ""
+                    ? watchdogErr
                     : "(vacío)"}
               </pre>
             </CardContent>
@@ -1285,105 +1282,105 @@ export default function PortalServerHealthPage() {
               )}
             </CardContent>
           </Card>
+        </div>
 
-          <AlertDialog
-            open={killDialogOpen}
-            onOpenChange={(open) => {
-              setKillDialogOpen(open);
-              if (!open) setKillTarget(null);
-            }}
-          >
-            <AlertDialogContent className="border-rose-900/40 bg-zinc-900 text-gray-100 sm:max-w-md">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="text-white">
-                  ¿Terminar proceso PID {killTarget?.pid ?? "—"}?
-                </AlertDialogTitle>
-                <AlertDialogDescription asChild>
-                  <div className="space-y-2 text-gray-400">
-                    <p>
-                      Usuario:{" "}
-                      <span className="text-gray-200">{killTarget?.user}</span>{" "}
-                      · Comm:{" "}
-                      <span className="font-mono text-xs text-gray-200">
-                        {killTarget?.command}
-                      </span>
-                    </p>
-                    <p>
-                      Primero prueba <strong className="text-gray-200">SIGTERM</strong>{" "}
-                      (cierre ordenado).{" "}
-                      {killAllowSigkill
-                        ? "SIGKILL sólo si no muere."
-                        : "SIGKILL no está habilitado en el servidor."}
-                    </p>
-                  </div>
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
-                <AlertDialogCancel
-                  className="border-gray-600 text-gray-300 mt-0"
-                  disabled={killSubmitting}
-                >
-                  Cancelar
-                </AlertDialogCancel>
+        <AlertDialog
+          open={killDialogOpen}
+          onOpenChange={(open) => {
+            setKillDialogOpen(open);
+            if (!open) setKillTarget(null);
+          }}
+        >
+          <AlertDialogContent className="border-rose-900/40 bg-zinc-900 text-gray-100 sm:max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-white">
+                ¿Terminar proceso PID {killTarget?.pid ?? "—"}?
+              </AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-2 text-gray-400">
+                  <p>
+                    Usuario:{" "}
+                    <span className="text-gray-200">{killTarget?.user}</span>{" "}
+                    · Comm:{" "}
+                    <span className="font-mono text-xs text-gray-200">
+                      {killTarget?.command}
+                    </span>
+                  </p>
+                  <p>
+                    Primero prueba <strong className="text-gray-200">SIGTERM</strong>{" "}
+                    (cierre ordenado).{" "}
+                    {killAllowSigkill
+                      ? "SIGKILL sólo si no muere."
+                      : "SIGKILL no está habilitado en el servidor."}
+                  </p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+              <AlertDialogCancel
+                className="border-gray-600 text-gray-300 mt-0"
+                disabled={killSubmitting}
+              >
+                Cancelar
+              </AlertDialogCancel>
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full border border-zinc-600 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 sm:w-auto"
+                disabled={killSubmitting}
+                onClick={() => void submitKillProcess(false)}
+              >
+                {killSubmitting ? "Enviando…" : "SIGTERM"}
+              </Button>
+              {killAllowSigkill ? (
                 <Button
                   type="button"
-                  variant="secondary"
-                  className="w-full border border-zinc-600 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 sm:w-auto"
+                  variant="destructive"
+                  className="w-full sm:w-auto"
                   disabled={killSubmitting}
-                  onClick={() => void submitKillProcess(false)}
+                  onClick={() => void submitKillProcess(true)}
                 >
-                  {killSubmitting ? "Enviando…" : "SIGTERM"}
+                  SIGKILL (-9)
                 </Button>
-                {killAllowSigkill ? (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    className="w-full sm:w-auto"
-                    disabled={killSubmitting}
-                    onClick={() => void submitKillProcess(true)}
-                  >
-                    SIGKILL (-9)
-                  </Button>
-                ) : null}
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+              ) : null}
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
-          <AlertDialog open={aptDialogOpen} onOpenChange={setAptDialogOpen}>
-            <AlertDialogContent className="max-h-[min(90vh,32rem)] overflow-y-auto border-cyan-500/30 bg-zinc-900 text-gray-100 sm:max-w-lg">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="text-white">
-                  ¿Aplicar apt update + upgrade?
-                </AlertDialogTitle>
-                <AlertDialogDescription className="text-gray-400">
-                  Se ejecutará en el servidor{" "}
-                  <code className="text-cyan-400">sudo apt-get update</code> y
-                  luego{" "}
-                  <code className="text-cyan-400">
-                    sudo apt-get upgrade -y
-                  </code>{" "}
-                  (modo no interactivo). Puede tardar varios minutos y reiniciar
-                  servicios si un paquete lo requiere.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="border-gray-600 text-gray-300">
-                  Cancelar
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  className="!shadow-none !border !border-zinc-600/70 !bg-zinc-800/60 !text-zinc-200 hover:!bg-zinc-700/70 hover:!text-white hover:!border-zinc-500/70"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    void runAptApply();
-                  }}
-                  disabled={aptApplying}
-                >
-                  {aptApplying ? "Ejecutando…" : "Sí, aplicar"}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
+        <AlertDialog open={aptDialogOpen} onOpenChange={setAptDialogOpen}>
+          <AlertDialogContent className="max-h-[min(90vh,32rem)] overflow-y-auto border-cyan-500/30 bg-zinc-900 text-gray-100 sm:max-w-lg">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-white">
+                ¿Aplicar apt update + upgrade?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-gray-400">
+                Se ejecutará en el servidor{" "}
+                <code className="text-cyan-400">sudo apt-get update</code> y
+                luego{" "}
+                <code className="text-cyan-400">
+                  sudo apt-get upgrade -y
+                </code>{" "}
+                (modo no interactivo). Puede tardar varios minutos y reiniciar
+                servicios si un paquete lo requiere.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="border-gray-600 text-gray-300">
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className="!shadow-none !border !border-zinc-600/70 !bg-zinc-800/60 !text-zinc-200 hover:!bg-zinc-700/70 hover:!text-white hover:!border-zinc-500/70"
+                onClick={(e) => {
+                  e.preventDefault();
+                  void runAptApply();
+                }}
+                disabled={aptApplying}
+              >
+                {aptApplying ? "Ejecutando…" : "Sí, aplicar"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {health?.generatedAt && (
           <p className="text-xs text-gray-500 text-center">
