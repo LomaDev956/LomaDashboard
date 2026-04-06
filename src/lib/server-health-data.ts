@@ -152,6 +152,116 @@ export function clampProcessLimit(raw: string | null): number {
   return Math.min(Math.max(1, n), MAX_PROC_LIMIT);
 }
 
+const MIN_KILLABLE_PID = 2;
+const MAX_KILLABLE_PID = 4_194_304;
+
+function parseEnvBool(raw: string | undefined): boolean {
+  if (raw == null || String(raw).trim() === '') return false;
+  const v = String(raw).trim().replace(/^["']|["']$/g, '').toLowerCase();
+  return v === 'true' || v === '1' || v === 'yes';
+}
+
+/** Habilita POST /api/loma/server-monitor/kill-process (igual patrón que LOMA_REBOOT_ENABLED). */
+export function isKillProcessFeatureEnabled(): boolean {
+  return parseEnvBool(process.env.LOMA_KILL_PROCESS_ENABLED);
+}
+
+export function isKillProcessSigkillAllowed(): boolean {
+  return parseEnvBool(process.env.LOMA_KILL_PROCESS_ALLOW_SIGKILL);
+}
+
+export type KillProcessResult = {
+  ok: boolean;
+  pid: number;
+  signal: 'SIGTERM' | 'SIGKILL';
+  method?: string;
+  error?: string;
+  detail?: string;
+  hint?: string;
+};
+
+/**
+ * Intenta terminar un PID: primero `kill` como usuario de Node, luego `sudo -n /bin/kill`.
+ * No permite PID 1 ni el PID del proceso actual (portal).
+ */
+export async function killServerProcess(
+  pid: number,
+  force: boolean
+): Promise<KillProcessResult> {
+  const signal: 'SIGTERM' | 'SIGKILL' = force ? 'SIGKILL' : 'SIGTERM';
+  const sigArg = force ? '-9' : '-TERM';
+
+  if (!isUnixLike()) {
+    return {
+      ok: false,
+      pid,
+      signal,
+      error: 'Sólo disponible en Linux.',
+    };
+  }
+
+  if (
+    !Number.isInteger(pid) ||
+    pid < MIN_KILLABLE_PID ||
+    pid > MAX_KILLABLE_PID
+  ) {
+    return {
+      ok: false,
+      pid,
+      signal,
+      error: 'PID inválido.',
+    };
+  }
+
+  if (pid === process.pid) {
+    return {
+      ok: false,
+      pid,
+      signal,
+      error: 'No se puede terminar el proceso del portal (Next.js).',
+    };
+  }
+
+  const killBins = ['/bin/kill', '/usr/bin/kill'];
+  const methods: { label: string; file: string; args: string[] }[] = [];
+
+  for (const kb of killBins) {
+    methods.push({
+      label: `kill directo (${kb})`,
+      file: kb,
+      args: [sigArg, String(pid)],
+    });
+    methods.push({
+      label: `sudo -n ${kb}`,
+      file: 'sudo',
+      args: ['-n', kb, sigArg, String(pid)],
+    });
+  }
+
+  let lastErr = '';
+  for (const m of methods) {
+    try {
+      await execFileSafe(m.file, m.args, 8_000, { ignoreStdin: true });
+      return { ok: true, pid, signal, method: m.label };
+    } catch (e) {
+      lastErr =
+        e instanceof Error ? e.message : typeof e === 'object' && e && 'stderr' in e
+          ? String((e as { stderr?: unknown }).stderr ?? e)
+          : String(e);
+    }
+  }
+
+  return {
+    ok: false,
+    pid,
+    signal,
+    error: 'No se pudo enviar la señal al proceso.',
+    detail: lastErr.slice(0, 500),
+    hint:
+      'Si el proceso es de otro usuario, añade en sudoers NOPASSWD para /bin/kill y /usr/bin/kill (como con shutdown). Comprueba que el PID siga existiendo.',
+  };
+}
+
 export async function getServerProcesses(
   limit: number
 ): Promise<ProcessesPayload> {

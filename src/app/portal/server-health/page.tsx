@@ -10,6 +10,7 @@ import {
   HardDrive,
   MemoryStick,
   RefreshCw,
+  Skull,
   Timer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ import type {
   ProcessRow,
   ServerHealthPayload,
 } from "@/lib/server-health-types";
+import { useToast } from "@/hooks/use-toast";
 
 function formatBytes(n: number): string {
   if (!Number.isFinite(n) || n < 0) return "—";
@@ -79,10 +81,12 @@ const MONITOR = {
   aptApply: "/api/loma/server-monitor/apt-apply",
   aptApplyStream: "/api/loma/server-monitor/apt-apply/run-stream",
   reboot: "/api/loma/server-monitor/reboot",
+  killProcess: "/api/loma/server-monitor/kill-process",
 } as const;
 
 export default function PortalServerHealthPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [health, setHealth] = useState<ServerHealthPayload | null>(null);
   const [processes, setProcesses] = useState<ProcessRow[]>([]);
@@ -130,6 +134,13 @@ export default function PortalServerHealthPage() {
   const [rebootLogTone, setRebootLogTone] = useState<"success" | "error" | null>(
     null
   );
+
+  const [killEnabled, setKillEnabled] = useState<boolean | null>(null);
+  const [killAllowSigkill, setKillAllowSigkill] = useState(false);
+  const [killHint, setKillHint] = useState("");
+  const [killDialogOpen, setKillDialogOpen] = useState(false);
+  const [killTarget, setKillTarget] = useState<ProcessRow | null>(null);
+  const [killSubmitting, setKillSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -272,6 +283,28 @@ export default function PortalServerHealthPage() {
         setRebootEnabled(false);
         setRebootHint("");
         setRebootRequired(false);
+      }
+
+      try {
+        const kRes = await fetch(MONITOR.killProcess, { credentials: "include" });
+        const kJson = (await kRes.json()) as {
+          enabled?: boolean;
+          allowSigkill?: boolean;
+          hint?: string;
+        };
+        if (kRes.ok) {
+          setKillEnabled(!!kJson.enabled);
+          setKillAllowSigkill(!!kJson.allowSigkill);
+          setKillHint(typeof kJson.hint === "string" ? kJson.hint : "");
+        } else {
+          setKillEnabled(false);
+          setKillAllowSigkill(false);
+          setKillHint("");
+        }
+      } catch {
+        setKillEnabled(false);
+        setKillAllowSigkill(false);
+        setKillHint("");
       }
     } catch (e) {
       setFetchErr(e instanceof Error ? e.message : "Error de red");
@@ -451,6 +484,53 @@ export default function PortalServerHealthPage() {
       setRebootApplying(false);
     }
   }, []);
+
+  const submitKillProcess = useCallback(
+    async (force: boolean) => {
+      if (!killTarget) return;
+      setKillSubmitting(true);
+      try {
+        const res = await fetch(MONITOR.killProcess, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pid: killTarget.pid, force }),
+        });
+        const j = (await res.json().catch(() => ({}))) as {
+          ok?: boolean;
+          error?: string;
+          detail?: string;
+          hint?: string;
+          method?: string;
+          signal?: string;
+        };
+        if (j.ok) {
+          toast({
+            title: force ? "SIGKILL enviado" : "SIGTERM enviado",
+            description: j.method ?? `PID ${killTarget.pid}`,
+          });
+          setKillDialogOpen(false);
+          setKillTarget(null);
+          await load();
+          return;
+        }
+        toast({
+          variant: "destructive",
+          title: "No se pudo terminar el proceso",
+          description: [j.error, j.detail, j.hint].filter(Boolean).join(" — "),
+        });
+      } catch (e) {
+        toast({
+          variant: "destructive",
+          title: "Error de red",
+          description: e instanceof Error ? e.message : String(e),
+        });
+      } finally {
+        setKillSubmitting(false);
+      }
+    },
+    [killTarget, load, toast]
+  );
 
   const memPct =
     health && health.memory.totalBytes > 0
@@ -740,6 +820,11 @@ export default function PortalServerHealthPage() {
               {procMeta.skipped
                 ? procMeta.skipReason
                 : procMeta.error ?? "Nombre corto (comm), ordenados por %CPU"}
+              {killHint ? (
+                <span className="mt-2 block text-[11px] leading-snug text-cyan-400/85">
+                  {killHint}
+                </span>
+              ) : null}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-3 sm:p-6">
@@ -765,6 +850,11 @@ export default function PortalServerHealthPage() {
                     <TableHead className="text-gray-300">STAT</TableHead>
                     <TableHead className="text-gray-300">Tiempo</TableHead>
                     <TableHead className="text-gray-300">Comm</TableHead>
+                    {killEnabled ? (
+                      <TableHead className="text-right text-gray-300">
+                        Acción
+                      </TableHead>
+                    ) : null}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -792,6 +882,23 @@ export default function PortalServerHealthPage() {
                       <TableCell className="max-w-[200px] truncate font-mono text-xs text-gray-300">
                         {p.command}
                       </TableCell>
+                      {killEnabled ? (
+                        <TableCell className="text-right">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 touch-manipulation border-rose-900/50 text-rose-200 hover:bg-rose-950/40 hover:text-rose-100"
+                            onClick={() => {
+                              setKillTarget(p);
+                              setKillDialogOpen(true);
+                            }}
+                          >
+                            <Skull className="mr-1 h-3.5 w-3.5" />
+                            Matar
+                          </Button>
+                        </TableCell>
+                      ) : null}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -833,6 +940,21 @@ export default function PortalServerHealthPage() {
                     <p className="mt-2 break-all font-mono text-[10px] leading-relaxed text-gray-400">
                       {p.command}
                     </p>
+                    {killEnabled ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 w-full touch-manipulation border-rose-900/50 text-rose-200 hover:bg-rose-950/40"
+                        onClick={() => {
+                          setKillTarget(p);
+                          setKillDialogOpen(true);
+                        }}
+                      >
+                        <Skull className="mr-1 h-3.5 w-3.5" />
+                        Matar proceso
+                      </Button>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -853,6 +975,16 @@ export default function PortalServerHealthPage() {
               <CardDescription className="font-mono text-xs break-all text-gray-400">
                 {watchdogPath || "—"}
               </CardDescription>
+              <p className="text-[11px] leading-relaxed text-amber-200/85 pt-1">
+                El script sólo hace <strong>KILL</strong> si la puntuación de riesgo
+                es alta (nombre/patrón sospechoso, CPU, ruta /tmp, red tipo stratum,
+                etc.) <strong>y</strong> el mismo PID lleva varias rondas con
+                riesgo (hits). Si el binario está bajo{" "}
+                <code className="text-cyan-300/90">/home/lomadev/loma-app/</code>,
+                se considera whitelist y <strong>no se evalúa</strong>: un
+                minero ahí no lo vería. Comprueba cron/systemd del watchdog y
+                permisos de lectura de este log.
+              </p>
             </CardHeader>
             <CardContent>
               {watchdogErr && !watchdogLines.length && (
@@ -1123,6 +1255,69 @@ export default function PortalServerHealthPage() {
               )}
             </CardContent>
           </Card>
+
+          <AlertDialog
+            open={killDialogOpen}
+            onOpenChange={(open) => {
+              setKillDialogOpen(open);
+              if (!open) setKillTarget(null);
+            }}
+          >
+            <AlertDialogContent className="border-rose-900/40 bg-zinc-900 text-gray-100 sm:max-w-md">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-white">
+                  ¿Terminar proceso PID {killTarget?.pid ?? "—"}?
+                </AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-2 text-gray-400">
+                    <p>
+                      Usuario:{" "}
+                      <span className="text-gray-200">{killTarget?.user}</span>{" "}
+                      · Comm:{" "}
+                      <span className="font-mono text-xs text-gray-200">
+                        {killTarget?.command}
+                      </span>
+                    </p>
+                    <p>
+                      Primero prueba <strong className="text-gray-200">SIGTERM</strong>{" "}
+                      (cierre ordenado).{" "}
+                      {killAllowSigkill
+                        ? "SIGKILL sólo si no muere."
+                        : "SIGKILL no está habilitado en el servidor."}
+                    </p>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+                <AlertDialogCancel
+                  className="border-gray-600 text-gray-300 mt-0"
+                  disabled={killSubmitting}
+                >
+                  Cancelar
+                </AlertDialogCancel>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full border border-zinc-600 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 sm:w-auto"
+                  disabled={killSubmitting}
+                  onClick={() => void submitKillProcess(false)}
+                >
+                  {killSubmitting ? "Enviando…" : "SIGTERM"}
+                </Button>
+                {killAllowSigkill ? (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    className="w-full sm:w-auto"
+                    disabled={killSubmitting}
+                    onClick={() => void submitKillProcess(true)}
+                  >
+                    SIGKILL (-9)
+                  </Button>
+                ) : null}
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           <AlertDialog open={aptDialogOpen} onOpenChange={setAptDialogOpen}>
             <AlertDialogContent className="max-h-[min(90vh,32rem)] overflow-y-auto border-cyan-500/30 bg-zinc-900 text-gray-100 sm:max-w-lg">
