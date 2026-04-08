@@ -385,7 +385,8 @@ export async function getAptUpgrades(): Promise<UpdatesPayload> {
     for (const line of raw.split('\n')) {
       const t = line.trim();
       if (!t || t.startsWith('Listing')) continue;
-      if (/\[upgradable from:/i.test(t)) {
+      // Inglés: [upgradable from: …]  ·  Español (locale): [actualizable desde: …]
+      if (/\[(upgradable from:|actualizable desde:|upgradeable from:)/i.test(t)) {
         const name = t.split('/')[0]?.trim();
         if (name) packages.push(name);
       }
